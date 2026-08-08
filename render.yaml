@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: unspool-web
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 22.15.0
+      - key: RENDER_API_KEY
+        sync: false
+      - key: RENDER_AUDIT_TASK_SLUG
+        value: unspool-ai-audit/run_model_card_audit

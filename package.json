@@ -1,0 +1,28 @@
+{
+  "name": "unspool-mental-health",
+  "private": true,
+  "version": "1.0.0",
+  "license": "LGPL-2.1-only",
+  "type": "module",
+  "workspaces": [
+    "workflow"
+  ],
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "start": "node server.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test",
+    "test:workflow": "npm run check --workspace workflow",
+    "check": "npm run test && npm run test:workflow && npm run build"
+  },
+  "dependencies": {
+    "@renderinc/sdk": "^0.6.0",
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest"
+  },
+  "devDependencies": {}
+}
