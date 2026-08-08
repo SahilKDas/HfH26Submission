@@ -44,7 +44,7 @@ function serveAsset(pathname, response) {
   response.writeHead(200, {
     'Content-Type': contentTypes[extname(file)] || 'application/octet-stream',
     'Cache-Control': file.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable',
-    'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; media-src 'self' https://radio.loficafe.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     'X-Frame-Options': 'DENY',
     'X-Content-Type-Options': 'nosniff',
   });

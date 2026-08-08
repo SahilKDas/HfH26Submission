@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity, ArrowLeft, ArrowRight, Brain, Check, ChevronDown, CircleOff, Clipboard,
   CloudRain, Database, Eye, EyeOff, Footprints, HeartHandshake, Info, Leaf, LockKeyhole,
-  Menu, MessageCircleHeart, Minus, MoonStar, Pause, Play, RefreshCcw, Scan, ShieldCheck,
-  Snowflake, Sparkles, SunDim, Trash2, Waves, X, Zap,
+  Maximize2, Menu, MessageCircleHeart, Minus, MoonStar, Pause, Play, RefreshCcw, Scan,
+  ShieldCheck, SkipBack, SkipForward, Snowflake, Sparkles, SunDim, Trash2, Volume2, Waves, X, Zap,
 } from 'lucide-react';
 import { needOptions, signalOptions } from './data/interventions.js';
 import { createPlan, recordOutcome } from './lib/engine.js';
 import { addSession, clearPrivateData, loadOutcomes, loadSessions, saveOutcomes } from './lib/storage.js';
+import { useAudio } from './lib/audio.jsx';
+import RadioPlayer from './components/RadioPlayer.jsx';
 
 const iconMap = { Activity, CircleOff, CloudRain, EyeOff, Footprints, Scan, Snowflake, SunDim, Waves, Zap };
 
@@ -163,10 +165,17 @@ function Hero({ openCheckin, openSafety }) {
   );
 }
 
-function CheckinModal({ onClose, onPlan, onCrisis }) {
+function CheckinModal({ onClose, onPlan, onCrisis, initialData }) {
   const [step, setStep] = useState(1);
-  const [data, setData] = useState(defaultCheckin);
+  const [data, setData] = useState(() => initialData ? {
+    ...defaultCheckin,
+    ...initialData,
+    signals: [...(initialData.signals || [])],
+    preferences: { ...defaultCheckin.preferences, ...(initialData.preferences || {}) },
+    immediateDanger: false,
+  } : defaultCheckin);
   const [processing, setProcessing] = useState(false);
+  const [planError, setPlanError] = useState('');
   const titleRef = useRef(null);
 
   useEffect(() => { titleRef.current?.focus(); }, [step]);
@@ -189,7 +198,8 @@ function CheckinModal({ onClose, onPlan, onCrisis }) {
       window.setTimeout(() => {
         const plan = createPlan(data, loadOutcomes());
         setProcessing(false);
-        onPlan(plan, data);
+        if (plan.primary) onPlan(plan, data);
+        else setPlanError(plan.gate.reason);
       }, 1450);
     }
   };
@@ -267,6 +277,7 @@ function CheckinModal({ onClose, onPlan, onCrisis }) {
                 <div><ShieldCheck size={20} /><span><b>Safety check active</b><small>Every candidate is checked against intensity and access constraints before ranking.</small></span></div>
                 <button onClick={onCrisis}>I may not be safe right now</button>
               </div>
+              {planError && <div className="checkin-error" role="alert"><Info size={17} /><span>{planError}</span></div>}
             </section>
           )}
         </div>
@@ -311,42 +322,160 @@ function ProcessingOverlay() {
   );
 }
 
-function PlanView({ plan, input, onClose, onAgain }) {
+function PlanView({ plan, input, onClose, onAgain, onReject, onCrisis }) {
   const item = plan.primary;
+  const { cuesEnabled, setCuesEnabled, cueVolume, setCueVolume, playCue } = useAudio();
   const [running, setRunning] = useState(false);
   const [remaining, setRemaining] = useState(item.duration);
   const [finished, setFinished] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [guided, setGuided] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [afterIntensity, setAfterIntensity] = useState(null);
   const [rated, setRated] = useState(null);
-  const sessionRef = useRef(null);
+  const [cueMessage, setCueMessage] = useState('Guide ready');
+  const [cuePulse, setCuePulse] = useState(0);
+  const endAtRef = useRef(0);
+  const completionHandledRef = useRef(false);
+  const lastStepRef = useRef(0);
+  const guidedTitleRef = useRef(null);
 
   useEffect(() => {
-    if (!running || remaining <= 0) return undefined;
-    const timer = window.setInterval(() => setRemaining((value) => value - 1), 1000);
-    return () => window.clearInterval(timer);
-  }, [running, remaining]);
-
-  useEffect(() => {
-    if (remaining === 0 && !finished) { setRunning(false); setFinished(true); }
-  }, [remaining, finished]);
+    if (input.preferences?.silent && cuesEnabled) setCuesEnabled(false);
+  }, [input.preferences?.silent]);
 
   const elapsed = item.duration - remaining;
-  const activeStep = Math.min(item.steps.length - 1, item.steps.findIndex((_, index) => elapsed < item.steps.slice(0, index + 1).reduce((sum, step) => sum + step.time, 0)));
-  const displayStep = activeStep < 0 ? item.steps.length - 1 : activeStep;
-  const rate = (helpful) => {
-    const outcomes = recordOutcome(loadOutcomes(), item.id, helpful);
-    saveOutcomes(outcomes);
-    if (!sessionRef.current) sessionRef.current = addSession({ interventionId: item.id, before: input.intensity, after: helpful ? Math.max(1, input.intensity - 2) : input.intensity, helpful });
-    setRated(helpful);
+  const stepEnds = item.steps.map((_, index) => item.steps.slice(0, index + 1).reduce((sum, step) => sum + step.time, 0));
+  const foundStep = stepEnds.findIndex((end) => elapsed < end);
+  const displayStep = foundStep < 0 ? item.steps.length - 1 : foundStep;
+  const circumference = 2 * Math.PI * 74;
+  const progress = remaining / item.duration;
+
+  const announce = (message, kind) => {
+    setCueMessage(message);
+    setCuePulse((value) => value + 1);
+    playCue(kind);
   };
+
+  useEffect(() => {
+    if (!running) return undefined;
+    const tick = () => {
+      const next = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000));
+      setRemaining(next);
+      if (next === 0 && !completionHandledRef.current) {
+        completionHandledRef.current = true;
+        setRunning(false);
+        setFinished(true);
+        setCompleted(true);
+        setGuided(false);
+        setFeedbackOpen(true);
+        announce('Practice complete. Check in with what changed.', 'complete');
+      }
+    };
+    tick();
+    const timer = window.setInterval(tick, 200);
+    return () => window.clearInterval(timer);
+  }, [running]);
+
+  useEffect(() => {
+    if (running && displayStep !== lastStepRef.current) {
+      lastStepRef.current = displayStep;
+      announce(`Step ${displayStep + 1}: ${item.steps[displayStep].title}`, 'transition');
+    }
+  }, [displayStep, running]);
+
+  useEffect(() => {
+    if (!guided) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    guidedTitleRef.current?.focus();
+    const onKeyDown = (event) => {
+      if (['INPUT', 'BUTTON'].includes(event.target?.tagName)) return;
+      if (event.key === 'Escape') setGuided(false);
+      if (event.key === ' ') { event.preventDefault(); toggleTimer(); }
+      if (event.key === 'ArrowLeft') jumpToStep(displayStep - 1);
+      if (event.key === 'ArrowRight') jumpToStep(displayStep + 1);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [guided, displayStep, running, remaining]);
+
+  const toggleTimer = () => {
+    if (finished) return;
+    if (running) {
+      const next = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000));
+      setRemaining(next);
+      setRunning(false);
+      announce('Paused', 'pause');
+    } else {
+      completionHandledRef.current = false;
+      endAtRef.current = Date.now() + remaining * 1000;
+      setRunning(true);
+      announce(remaining === item.duration ? 'Practice started' : 'Practice continued', remaining === item.duration ? 'start' : 'transition');
+    }
+  };
+
+  const resetTimer = () => {
+    setRunning(false);
+    setRemaining(item.duration);
+    setFinished(false);
+    setCompleted(false);
+    setFeedbackOpen(false);
+    setAfterIntensity(null);
+    completionHandledRef.current = false;
+    lastStepRef.current = 0;
+    announce('Practice reset', 'pause');
+  };
+
+  const jumpToStep = (index) => {
+    const target = Math.max(0, Math.min(item.steps.length - 1, index));
+    const elapsedBefore = target === 0 ? 0 : stepEnds[target - 1];
+    const nextRemaining = item.duration - elapsedBefore;
+    setRemaining(nextRemaining);
+    lastStepRef.current = target;
+    if (running) endAtRef.current = Date.now() + nextRemaining * 1000;
+    announce(`Step ${target + 1}: ${item.steps[target].title}`, 'transition');
+  };
+
+  const stopPractice = () => {
+    const next = running ? Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000)) : remaining;
+    setRemaining(next);
+    setRunning(false);
+    setGuided(false);
+    setCompleted(false);
+    if (item.duration - next >= 15) setFeedbackOpen(true);
+    announce('Practice stopped. Your choice is respected.', 'pause');
+  };
+
+  const saveFeedback = (outcome) => {
+    const outcomes = recordOutcome(loadOutcomes(), item.id, outcome);
+    saveOutcomes(outcomes);
+    addSession({
+      interventionId: item.id,
+      before: input.intensity,
+      after: afterIntensity,
+      outcome,
+      completed,
+    });
+    setRated(outcome);
+    setFeedbackOpen(false);
+  };
+
+  const skipFeedback = () => {
+    setRated('skipped');
+    setFeedbackOpen(false);
+  };
+
   const copy = async () => {
-    await navigator.clipboard?.writeText(item.bridge);
+    try { await navigator.clipboard?.writeText(item.bridge); } catch { /* Copy remains optional. */ }
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   };
-  const circumference = 2 * Math.PI * 74;
-  const progress = remaining / item.duration;
 
   return (
     <div className="plan-page">
@@ -356,6 +485,14 @@ function PlanView({ plan, input, onClose, onAgain }) {
           <span className="eyebrow coral">YOUR NEXT {item.duration} SECONDS</span>
           <h1>{item.name}.</h1>
           <p>{item.short}</p>
+          <div className="plan-intro-actions">
+            <button className="guide-button" onClick={() => setGuided(true)}><Maximize2 size={16} /> Guide me step by step</button>
+            <button className="not-for-me" onClick={() => onReject(input)}>This step isn’t for me</button>
+          </div>
+          <div className="cue-settings">
+            {input.preferences?.silent ? <span>Silent preference active · transition tones off</span> : <label><input type="checkbox" checked={cuesEnabled} onChange={(event) => setCuesEnabled(event.target.checked)} /> Gentle transition tones</label>}
+            {cuesEnabled && !input.preferences?.silent && <label className="cue-volume"><Volume2 size={15} /><span className="sr-only">Cue volume</span><input type="range" min="0.1" max="1" step="0.1" value={cueVolume} onChange={(event) => setCueVolume(Number(event.target.value))} /></label>}
+          </div>
           <button className="why-button" onClick={() => setWhyOpen(!whyOpen)} aria-expanded={whyOpen}><Sparkles size={16} /> Why this step <ChevronDown size={16} /></button>
           {whyOpen && (
             <div className="why-panel">
@@ -376,14 +513,13 @@ function PlanView({ plan, input, onClose, onAgain }) {
               <svg viewBox="0 0 180 180" aria-hidden="true"><circle cx="90" cy="90" r="74" /><circle className="progress" cx="90" cy="90" r="74" style={{ strokeDasharray: circumference, strokeDashoffset: circumference * (1 - progress) }} /></svg>
               <div><strong>{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}</strong><span>{finished ? 'complete' : running ? 'stay easy' : 'when ready'}</span></div>
             </div>
-            {!finished ? (
-              <button className="timer-control" onClick={() => setRunning(!running)}>{running ? <Pause fill="currentColor" /> : <Play fill="currentColor" />} {running ? 'Pause' : remaining < item.duration ? 'Continue' : 'Start gently'}</button>
-            ) : <Pill tone="sage" icon={Check}>You made space</Pill>}
-            <button className="reset-link" onClick={() => { setRemaining(item.duration); setFinished(false); setRunning(false); }}><RefreshCcw size={14} /> Reset timer</button>
+            {!finished ? <button className="timer-control" onClick={toggleTimer}>{running ? <Pause fill="currentColor" /> : <Play fill="currentColor" />} {running ? 'Pause' : remaining < item.duration ? 'Continue' : 'Start gently'}</button> : <Pill tone="sage" icon={Check}>You made space</Pill>}
+            <button className="reset-link" onClick={resetTimer}><RefreshCcw size={14} /> Reset timer</button>
+            {!finished && elapsed >= 15 && <button className="stop-link" onClick={stopPractice}>Stop and check in</button>}
           </div>
           <div className="steps-column">
             {item.steps.map((step, index) => (
-              <article key={step.title} className={`${displayStep === index ? 'active' : ''} ${elapsed >= item.steps.slice(0, index + 1).reduce((sum, value) => sum + value.time, 0) ? 'passed' : ''}`}>
+              <article key={step.title} className={`${displayStep === index ? 'active' : ''} ${elapsed >= stepEnds[index] ? 'passed' : ''}`}>
                 <span>{index + 1}</span>
                 <div><div className="step-title-row"><h3>{step.title}</h3><small>{step.time}s</small></div><p>{step.body}</p></div>
               </article>
@@ -398,11 +534,44 @@ function PlanView({ plan, input, onClose, onAgain }) {
           <button onClick={copy}>{copied ? <Check size={17} /> : <Clipboard size={17} />}{copied ? 'Copied' : 'Copy message'}</button>
         </section>
 
-        <section className="feedback-card">
-          {rated === null ? <><div><span className="eyebrow">TEACH YOUR PRIVATE MODEL</span><h2>Did this make the moment even 1% easier?</h2><p>Only the yes/no is stored—not what you selected or felt.</p></div><div><button onClick={() => rate(true)}>Yes, a little <Check size={17} /></button><button onClick={() => rate(false)}>Not this time <Minus size={17} /></button></div></> : <div className="feedback-thanks"><span><Check /></span><div><h2>That is enough data.</h2><p>Your answer stays on this device and quietly improves the next ranking.</p></div></div>}
+        <section className={`feedback-card ${feedbackOpen ? 'feedback-open' : ''}`}>
+          {feedbackOpen ? (
+            <div className="feedback-form">
+              <div><span className="eyebrow">OPTIONAL PRIVATE CHECK-IN</span><h2>Where is the intensity now?</h2><p>Select a number only if you want to. Nothing is inferred.</p></div>
+              <div className="after-scale" aria-label="Intensity after the practice">{Array.from({ length: 10 }, (_, index) => index + 1).map((value) => <button key={value} aria-pressed={afterIntensity === value} onClick={() => setAfterIntensity(value)}>{value}</button>)}</div>
+              <div className="outcome-actions"><button onClick={() => saveFeedback('helped')}>Helped <Check /></button><button onClick={() => saveFeedback('same')}>About the same <Minus /></button><button onClick={() => saveFeedback('harder')}>Made it harder <X /></button></div>
+              <button className="skip-feedback" onClick={skipFeedback}>Skip without saving</button>
+            </div>
+          ) : rated ? (
+            <div className="feedback-thanks"><span>{rated === 'skipped' ? <LockKeyhole /> : <Check />}</span><div><h2>{rated === 'skipped' ? 'Nothing was saved.' : 'That is enough data.'}</h2><p>{rated === 'harder' ? 'This practice will stay out of your recommendations until you erase the private model.' : rated === 'skipped' ? 'You can leave without turning the moment into a record.' : 'Your explicit answer stays on this device and quietly improves the next ranking.'}</p></div></div>
+          ) : (
+            <div className="feedback-waiting"><span className="eyebrow">NO ASSUMED OUTCOMES</span><h2>Finish—or stop after a few seconds—to check in.</h2><p>Unspool never invents an “after” score from a button tap.</p></div>
+          )}
         </section>
         <div className="plan-actions"><button onClick={onAgain}><RefreshCcw size={16} /> Start another check-in</button><button onClick={onClose}>Return home</button></div>
       </main>
+
+      {guided && (
+        <div className="guided-mode" role="dialog" aria-modal="true" aria-labelledby="guided-title">
+          <header><Brand /><Pill tone="sage" icon={LockKeyhole}>Low-stimulation guide</Pill><button onClick={() => setGuided(false)}><X /> Exit guide</button></header>
+          <main>
+            <div key={cuePulse} className="guided-cue-pulse" aria-hidden="true" />
+            <span className="eyebrow">STEP {displayStep + 1} OF {item.steps.length} · {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')} LEFT</span>
+            <h1 id="guided-title" tabIndex="-1" ref={guidedTitleRef}>{item.steps[displayStep].title}</h1>
+            <p>{item.steps[displayStep].body}</p>
+            <div className="guided-progress" aria-label={`${Math.round((1 - progress) * 100)} percent complete`}><span style={{ width: `${(1 - progress) * 100}%` }} /></div>
+            <div className="guided-controls">
+              <button onClick={() => jumpToStep(displayStep - 1)} disabled={displayStep === 0} aria-label="Previous instruction"><SkipBack /></button>
+              <button className="guided-play" onClick={toggleTimer}>{running ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}<span>{running ? 'Pause' : remaining < item.duration ? 'Continue' : 'Start'}</span></button>
+              <button onClick={() => jumpToStep(displayStep + 1)} disabled={displayStep === item.steps.length - 1} aria-label="Next instruction"><SkipForward /></button>
+            </div>
+            <div className="guided-secondary"><button onClick={resetTimer}><RefreshCcw /> Restart</button>{elapsed >= 15 && <button onClick={stopPractice}>Stop and check in</button>}<button onClick={() => onReject(input)}>Not for me</button></div>
+            <button className="guided-safety" onClick={() => { setGuided(false); onCrisis(); }}><HeartHandshake /> I may not be safe right now</button>
+            {item.cautions.length > 0 && <div className="guided-caution"><Info /> {item.cautions[0]}</div>}
+            <span className="sr-only" aria-live="polite">{cueMessage}</span>
+          </main>
+        </div>
+      )}
     </div>
   );
 }
@@ -430,25 +599,30 @@ function CrisisModal({ onClose }) {
 function InsightsView({ openCheckin }) {
   const [sessions, setSessions] = useState(() => loadSessions());
   const [confirmClear, setConfirmClear] = useState(false);
-  const helpful = sessions.filter((session) => session.helpful).length;
-  const rate = sessions.length ? Math.round((helpful / sessions.length) * 100) : 0;
+  const ratedSessions = sessions.filter((session) => session.outcome);
+  const helpful = ratedSessions.filter((session) => session.outcome === 'helped').length;
+  const harder = ratedSessions.filter((session) => session.outcome === 'harder').length;
+  const completedCount = sessions.filter((session) => session.completed).length;
+  const stoppedCount = sessions.filter((session) => !session.completed && session.outcome).length;
+  const legacyCount = sessions.length - completedCount - stoppedCount;
+  const rate = ratedSessions.length ? Math.round((helpful / ratedSessions.length) * 100) : 0;
   const clear = () => { clearPrivateData(); setSessions([]); setConfirmClear(false); };
-  const points = sessions.slice(0, 7).reverse();
+  const points = sessions.filter((session) => Number.isFinite(session.after)).slice(0, 7).reverse();
   const chartPoints = points.map((session, index) => `${20 + index * 55},${130 - ((session.after ?? session.before) / 10) * 95}`).join(' ');
   return (
     <main id="main-content" className="insights-page page-shell">
       <div className="page-kicker"><Pill tone="sage" icon={LockKeyhole}>Only visible on this device</Pill></div>
       <div className="insights-heading"><div><span className="eyebrow coral">YOUR PRIVATE PATTERN</span><h1>Small signals.<br /><em>Useful memory.</em></h1></div><p>Unspool remembers outcomes, not stories. No journal text, diagnosis, or identity is collected. Your pattern can be erased in one tap.</p></div>
       <section className="stats-grid">
-        <article><span>Check-ins</span><strong>{sessions.length || '—'}</strong><small>{sessions.length ? 'stored locally' : 'Your first check-in starts the pattern'}</small></article>
-        <article><span>Helpful steps</span><strong>{sessions.length ? `${rate}%` : '—'}</strong><small>Based on your one-tap feedback</small></article>
-        <article className="accent"><span>Data uploaded</span><strong>0 <small>bytes</small></strong><small>Local mode keeps raw signals here</small></article>
+        <article><span>Check-ins</span><strong>{sessions.length || '—'}</strong><small>{sessions.length ? `${completedCount} completed · ${stoppedCount} stopped${legacyCount ? ` · ${legacyCount} legacy` : ''}` : 'Your first explicit outcome starts the pattern'}</small></article>
+        <article><span>Helpful steps</span><strong>{ratedSessions.length ? `${rate}%` : '—'}</strong><small>{harder ? `${harder} marked harder and excluded` : 'Based only on explicit feedback'}</small></article>
+        <article className="accent"><span>Raw check-in uploaded</span><strong>0 <small>bytes</small></strong><small>Radio playback never receives check-in data</small></article>
       </section>
       <div className="insights-grid">
         <section className="pattern-card">
-          <div className="card-heading"><div><span className="eyebrow">RECENT MOMENTS</span><h2>Intensity after each step</h2></div><Pill>{points.length ? 'Your data' : 'Waiting for data'}</Pill></div>
+          <div className="card-heading"><div><span className="eyebrow">EXPLICIT MEASUREMENTS</span><h2>Intensity you reported afterward</h2></div><Pill>{points.length ? 'Your data' : 'Waiting for data'}</Pill></div>
           {points.length ? (
-            <div className="line-chart"><div className="y-labels"><span>10</span><span>5</span><span>0</span></div><svg viewBox="0 0 380 150" role="img" aria-label="Recent intensity scores"><line x1="20" y1="35" x2="360" y2="35" /><line x1="20" y1="82" x2="360" y2="82" /><line x1="20" y1="130" x2="360" y2="130" /><polyline points={chartPoints} />{points.map((session, index) => <circle key={session.id} cx={20 + index * 55} cy={130 - ((session.after ?? session.before) / 10) * 95} r="5" />)}</svg></div>
+            <><div className="line-chart"><div className="y-labels"><span>10</span><span>5</span><span>0</span></div><svg viewBox="0 0 380 150" role="img" aria-label="Recent explicitly reported after-intensity scores"><line x1="20" y1="35" x2="360" y2="35" /><line x1="20" y1="82" x2="360" y2="82" /><line x1="20" y1="130" x2="360" y2="130" /><polyline points={chartPoints} />{points.map((session, index) => <circle key={session.id} cx={20 + index * 55} cy={130 - (session.after / 10) * 95} r="5"><title>{`${session.completed ? 'Completed' : 'Stopped'} · ${session.outcome || 'No outcome'} · intensity ${session.after}`}</title></circle>)}</svg></div><div className="session-legend">{points.map((session) => <span key={session.id} className={`outcome-${session.outcome || 'none'}`}>{session.completed ? 'Completed' : 'Stopped'} · {session.outcome || 'measurement only'}</span>)}</div></>
           ) : (
             <div className="empty-pattern"><div><i /><i /><i /></div><h3>No story to perform here.</h3><p>Complete a practice and answer one tiny question. That is all the model needs.</p><button onClick={openCheckin}>Try a check-in <ArrowRight size={16} /></button></div>
           )}
@@ -457,7 +631,8 @@ function InsightsView({ openCheckin }) {
           <span className="eyebrow">WHAT THE MODEL KNOWS</span>
           <h2>A deliberately tiny memory.</h2>
           <div className="knows-row"><Check /><span><b>Intervention ID</b><small>Which kind of step you tried</small></span></div>
-          <div className="knows-row"><Check /><span><b>One outcome bit</b><small>Helped / did not help</small></span></div>
+          <div className="knows-row"><Check /><span><b>Explicit outcome</b><small>Helped / same / harder, only when supplied</small></span></div>
+          <div className="knows-row"><Check /><span><b>Optional after-intensity</b><small>Never guessed from an outcome</small></span></div>
           <div className="knows-row muted"><X /><span><b>No raw check-in</b><small>Signals and needs are discarded</small></span></div>
           <div className="knows-row muted"><X /><span><b>No identity or diagnosis</b><small>Not requested, inferred, or stored</small></span></div>
           <button className="delete-button" onClick={() => setConfirmClear(true)}><Trash2 size={16} /> Erase my private model</button>
@@ -503,7 +678,7 @@ function MethodView({ openCheckin }) {
         </div>
       </section>
       <section className="responsibility-section">
-        <div className="responsibility-copy"><span className="eyebrow">RESPONSIBLE BY ARCHITECTURE</span><h2>The safest health record is the one we never create.</h2><p>Raw check-ins are processed in-browser and discarded. Only a practice ID and one-bit helpfulness outcome can persist locally. Cloud workflows receive bounded synthetic or consented aggregate vectors—never journal text or direct identifiers.</p></div>
+        <div className="responsibility-copy"><span className="eyebrow">RESPONSIBLE BY ARCHITECTURE</span><h2>The safest health record is the one we never create.</h2><p>Raw check-ins are processed in-browser and discarded. Only a practice ID, explicit bounded outcome, completion state, and optional reported after-intensity can persist locally. Cloud workflows receive synthetic vectors—never journal text or direct identifiers.</p></div>
         <div className="data-diagram">
           <div className="diagram-row positive"><span><Check /></span><div><b>On your device</b><small>Signals · intensity · access needs · outcome</small></div><Pill tone="sage">encrypted by OS</Pill></div>
           <div className="diagram-divider"><LockKeyhole /><i /></div>
@@ -542,10 +717,12 @@ function Footer({ setView, openCheckin }) {
 }
 
 export default function App() {
+  const { pauseRadio } = useAudio();
   const [view, setView] = useState('home');
   const [checkingIn, setCheckingIn] = useState(false);
   const [planState, setPlanState] = useState(null);
   const [crisis, setCrisis] = useState(false);
+  const [checkinDraft, setCheckinDraft] = useState(null);
 
   useEffect(() => {
     const navigate = (event) => setView(event.detail);
@@ -553,7 +730,17 @@ export default function App() {
     return () => window.removeEventListener('unspool:navigate', navigate);
   }, []);
 
-  const openCheckin = () => { setPlanState(null); setCheckingIn(true); };
+  useEffect(() => {
+    if (crisis) pauseRadio();
+  }, [crisis, pauseRadio]);
+
+  const openCheckin = () => { setPlanState(null); setCheckinDraft(null); setCheckingIn(true); };
+  const restartCheckin = (input) => {
+    setPlanState(null);
+    setCheckinDraft(input);
+    setCheckingIn(true);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0 }));
+  };
   const receivePlan = (plan, input) => {
     setCheckingIn(false);
     setPlanState({ plan, input });
@@ -565,7 +752,13 @@ export default function App() {
     return <Hero openCheckin={openCheckin} openSafety={() => setView('method')} />;
   }, [view]);
 
-  if (planState) return <PlanView plan={planState.plan} input={planState.input} onClose={() => { setPlanState(null); setView('home'); }} onAgain={openCheckin} />;
+  if (planState) return (
+    <div className="app">
+      <PlanView plan={planState.plan} input={planState.input} onClose={() => { setPlanState(null); setView('home'); }} onAgain={openCheckin} onReject={restartCheckin} onCrisis={() => setCrisis(true)} />
+      <RadioPlayer hidden={crisis} />
+      {crisis && <CrisisModal onClose={() => setCrisis(false)} />}
+    </div>
+  );
 
   return (
     <div className="app">
@@ -573,8 +766,9 @@ export default function App() {
       <Header view={view} setView={setView} openCheckin={openCheckin} />
       {content}
       <Footer setView={setView} openCheckin={openCheckin} />
-      {checkingIn && <CheckinModal onClose={() => setCheckingIn(false)} onPlan={receivePlan} onCrisis={() => setCrisis(true)} />}
+      {checkingIn && <CheckinModal onClose={() => setCheckingIn(false)} onPlan={receivePlan} onCrisis={() => setCrisis(true)} initialData={checkinDraft} />}
       {crisis && <CrisisModal onClose={() => setCrisis(false)} />}
+      <RadioPlayer hidden={crisis} />
     </div>
   );
 }

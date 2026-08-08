@@ -33,7 +33,7 @@ The AI/ML system is a five-stage, in-browser pipeline:
 1. A fail-closed safety gate.
 2. Hybrid retrieval using structured matches plus compact feature-hashed embeddings.
 3. Contextual ranking with intensity, time, and access constraints.
-4. A UCB-style local bandit that learns from one-bit outcomes.
+4. A UCB-style local bandit that learns from explicit helped/same/harder outcomes and respects local exclusions.
 5. A plain-language explanation layer exposing match factors and uncertainty.
 
 Render Workflows powers our distributed safety-audit pipeline. A root Workflow generates bounded synthetic cohorts, fans out 48 accessibility-parity evaluations with retries, and composes a versioned model-card result. The web service triggers it through Render’s official SDK. No real check-in enters the Workflow.
@@ -42,7 +42,7 @@ Render Workflows powers our distributed safety-audit pipeline. A root Workflow g
 
 The hardest design problem was resisting feature inflation. In distress, more capability can mean less usability. We repeatedly removed copy, choices, and interpretation. The result provides one recommendation, not a feed.
 
-The hardest technical problem was making personalization compatible with strict privacy. We avoided transcripts and user profiles entirely. The local bandit needs only a practice ID and one outcome bit, and the cloud audit needs only synthetic inputs.
+The hardest technical problem was making personalization compatible with strict privacy. We avoided transcripts and user profiles entirely. The local bandit needs only a practice ID and explicit bounded outcome counts, and the cloud audit needs only synthetic inputs. After-intensity is optional and never inferred.
 
 We also designed around mixed evidence. A technique that helps one person can activate another. That is why breath, eye state, voice, position, intensity, and opt-out cautions are part of the ranking system—not footnotes.
 
@@ -73,4 +73,3 @@ React, Vite, JavaScript, TypeScript, Node.js, Render Web Services, Render Workfl
 ## Tracks
 
 Tools for Mental Health; Best Use of AI/ML; Responsible AI; Best Design; Best Use of Render; Best Innovation and Creativity.
-

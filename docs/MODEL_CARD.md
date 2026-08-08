@@ -6,7 +6,7 @@ Owner: Unspool project
 
 ## Intended use
 
-Select one brief, non-diagnostic self-regulation practice from a curated library based on bounded body signals, immediate need, intensity, time, access preferences, and local one-bit outcomes.
+Select one brief, non-diagnostic self-regulation practice from a curated library based on bounded body signals, immediate need, intensity, time, access preferences, and explicit local outcomes.
 
 ## Out-of-scope use
 
@@ -28,7 +28,7 @@ Select one brief, non-diagnostic self-regulation practice from a curated library
 
 ## Training data
 
-No externally trained model is used and no user dataset is collected. Feature hashing is deterministic. Adaptation uses only per-practice helpful and tried counts stored locally.
+No externally trained model is used and no user dataset is collected. Feature hashing is deterministic. Adaptation uses only per-practice helpful, tried, and harder counts stored locally. A practice marked harder is excluded until the user erases the private model.
 
 ## Inputs excluded by design
 
@@ -60,5 +60,4 @@ The Render Workflow also reports unsafe selections, decision margins, selection 
 
 ## Human control
 
-Users can inspect recommendation reasons, stop or reset any timer, choose a different session, skip breath-focused work, keep eyes open, require silence or a seated option, avoid crisis AI routing, and erase all local learning.
-
+Users can inspect recommendation reasons, use or exit a low-stimulation guide, stop or reset any timer, restart with their selections preserved, skip breath-focused work, keep eyes open, require silence or a seated option, avoid crisis AI routing, skip outcome storage, and erase all local learning.

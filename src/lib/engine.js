@@ -51,8 +51,9 @@ function preferenceScore(item, preferences) {
 }
 
 function banditScore(id, outcomes = {}) {
-  const record = outcomes[id] || { helpful: 0, tried: 0 };
+  const record = outcomes[id] || { helpful: 0, tried: 0, harder: 0 };
   const total = Object.values(outcomes).reduce((sum, value) => sum + (value.tried || 0), 0);
+  if (record.harder > 0) return { value: Number.NEGATIVE_INFINITY, label: 'excluded after making things harder', excluded: true };
   if (!record.tried) return { value: 0.32, label: 'new option' };
   const mean = record.helpful / record.tried;
   const exploration = Math.min(0.35, Math.sqrt((2 * Math.log(total + 2)) / record.tried) * 0.12);
@@ -79,6 +80,7 @@ export function rankInterventions(input, outcomes = {}) {
     return {
       ...item,
       score,
+      locallyExcluded: bandit.excluded === true,
       confidence: Math.max(64, Math.min(96, Math.round(68 + score * 3.1))),
       explanation: {
         matchedSignals,
@@ -89,7 +91,18 @@ export function rankInterventions(input, outcomes = {}) {
         evidence: item.evidence,
       },
     };
-  }).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  }).filter((item) => !item.locallyExcluded).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+
+  if (!ranked.length) {
+    return {
+      gate: {
+        blocked: true,
+        level: 'options',
+        reason: 'Every available practice was previously marked as making things harder. Erase the private model to start fresh.',
+      },
+      ranked: [],
+    };
+  }
 
   return { gate, ranked };
 }
@@ -111,13 +124,15 @@ export function createPlan(input, outcomes = {}) {
   };
 }
 
-export function recordOutcome(outcomes, id, helpful) {
-  const current = outcomes[id] || { helpful: 0, tried: 0 };
+export function recordOutcome(outcomes, id, outcome) {
+  if (!['helped', 'same', 'harder'].includes(outcome)) return outcomes;
+  const current = outcomes[id] || { helpful: 0, tried: 0, harder: 0 };
   return {
     ...outcomes,
     [id]: {
-      helpful: current.helpful + (helpful ? 1 : 0),
+      helpful: current.helpful + (outcome === 'helped' ? 1 : 0),
       tried: current.tried + 1,
+      harder: (current.harder || 0) + (outcome === 'harder' ? 1 : 0),
     },
   };
 }

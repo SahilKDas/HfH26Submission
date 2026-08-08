@@ -23,7 +23,7 @@ Most wellness products assume language, attention, and executive function are av
 4. Receive one step, not a content feed.
 5. See why it was selected.
 6. Optionally copy a bridge sentence to a trusted person.
-7. Teach the private model with one outcome bit.
+7. Optionally teach the private model with an explicit outcome and after-intensity.
 
 Unspool is not a diagnostic tool, treatment, therapist replacement, or crisis service.
 
@@ -115,11 +115,12 @@ Never prefix the key with `VITE_`; it must remain server-side.
 
 - No account, name, diagnosis, contact, location, free text, or demographic data is requested.
 - Raw check-in choices exist only in transient React state.
-- Persistent local storage contains a practice ID and a yes/no helpfulness count, plus minimized before/after scores.
+- Persistent local storage contains a practice ID, explicit helped/same/harder feedback, completion state, and optional user-reported before/after intensity. Unspool never fabricates an after score.
 - The user can erase the entire local model in one action.
 - Crisis signaling bypasses ranking and links directly to real-time human support.
 - The app avoids certainty, medical instructions, and clinical efficacy claims.
 - Synthetic Workflow audits explicitly report that parity tests do not establish clinical efficacy.
+- The optional lofi player remains unloaded until Play. Playback contacts Lofi Cafe and exposes normal network metadata to that provider, but never sends check-in or model data.
 
 See [`docs/PRIVACY_THREAT_MODEL.md`](./docs/PRIVACY_THREAT_MODEL.md) and [`docs/MODEL_CARD.md`](./docs/MODEL_CARD.md).
 

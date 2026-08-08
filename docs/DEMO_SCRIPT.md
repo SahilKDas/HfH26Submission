@@ -33,13 +33,17 @@ Scroll to **Borrow these words** and copy the message.
 
 > “Every plan ends with a bridge back to people. The AI does not try to become the relationship.”
 
-Tap **Yes, a little**.
+Finish the guide, explicitly choose an after-intensity, then tap **Helped**.
 
 ## 2:10-2:40 - Privacy
 
 Navigate to **My pattern**.
 
-> “Unspool remembers outcomes, not stories. The persistent model contains a practice ID and one helpfulness bit. No identity, diagnosis, free text, or raw check-in is stored, and the whole model can be erased here.”
+> “Unspool remembers explicit outcomes, not stories. It never invents an after score. No identity, diagnosis, free text, or raw check-in is stored, and the whole model can be erased here.”
+
+Briefly play the bottom-left lofi radio, then pause it.
+
+> “Optional ambience stays separate from the health flow. It never autoplays, and the provider receives no check-in data.”
 
 ## 2:40-3:20 - Responsible AI and Render
 
@@ -71,4 +75,3 @@ Close on the hero.
 - Add captions; do not rely on narration alone.
 - Show the Workflow run ID and Dashboard once for sponsor verification.
 - End before 3:50.
-

@@ -38,11 +38,22 @@ test('breath-sensitive preference excludes breathing exercise from the top rank'
 
 test('local feedback changes ranking without storing journal content', () => {
   let outcomes = {};
-  outcomes = recordOutcome(outcomes, 'reduce-input', true);
-  outcomes = recordOutcome(outcomes, 'reduce-input', true);
-  assert.deepEqual(outcomes['reduce-input'], { helpful: 2, tried: 2 });
+  outcomes = recordOutcome(outcomes, 'reduce-input', 'helped');
+  outcomes = recordOutcome(outcomes, 'reduce-input', 'helped');
+  assert.deepEqual(outcomes['reduce-input'], { helpful: 2, tried: 2, harder: 0 });
   const result = createPlan(base, outcomes);
   assert.match(result.primary.explanation.learning, /helpful before|new option/);
+});
+
+test('a practice marked harder is excluded until outcomes are erased', () => {
+  const outcomes = recordOutcome({}, 'reduce-input', 'harder');
+  const result = rankInterventions(base, outcomes);
+  assert.equal(outcomes['reduce-input'].harder, 1);
+  assert.ok(result.ranked.every((item) => item.id !== 'reduce-input'));
+});
+
+test('skipped or invalid feedback does not update the local model', () => {
+  assert.deepEqual(recordOutcome({}, 'reduce-input', null), {});
 });
 
 test('all accessibility preference variants receive a safe recommendation', () => {
