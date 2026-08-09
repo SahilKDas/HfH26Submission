@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Unspool">
+  <rect width="512" height="512" rx="118" fill="#0d1022"/>
+  <circle cx="256" cy="256" r="154" fill="none" stroke="#f6f1e9" stroke-width="18"/>
+  <path d="M130 208c54-30 103 36 160 4 45-25 76-15 94-5M128 260c51-29 102 35 160 4 47-26 78-15 98-3M133 312c48-28 98 31 151 5 45-23 76-18 96-8" fill="none" stroke="#ff8f74" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="359" cy="163" r="18" fill="#a8c7ad"/>
+</svg>

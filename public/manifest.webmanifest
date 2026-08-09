@@ -1,0 +1,15 @@
+{
+  "name": "Unspool — one safe next step",
+  "short_name": "Unspool",
+  "description": "A private, body-first bridge from overwhelm to one small, explainable practice.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0d1022",
+  "background_color": "#f6f1e9",
+  "icons": [
+    { "src": "/icons/unspool-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/unspool-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/unspool.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

@@ -2,59 +2,51 @@
 
 **A low-language bridge from overwhelm to one safe next step.**
 
-Unspool is a privacy-first mental-health web app built for the moment when someone knows they are overwhelmed but cannot explain why. Instead of opening with a blank journal or chatbot, it begins with body signals, available capacity, and access needs. A bounded local recommender returns one short, evidence-informed practice and a ready-to-send sentence for reaching a trusted person.
+Unspool is a local-first mental-health web app for moments when explaining a story is too much. A short check-in captures body signals, intensity, time, immediate need, and access settings. A deterministic and inspectable ranker returns one bounded practice plus an optional sentence for reaching a trusted person.
 
-This is a complete Hack for Humanity Summer 2026 submission targeting:
-
-- Best Mental Health Tool
-- Best Design
-- Best Use of AI/ML
-- Responsible AI
-- Best Use of Render
-- Best Innovation and Creativity
-
-## Why this is different
-
-Most wellness products assume language, attention, and executive function are available during distress. Unspool treats that assumption as the problem. The central interaction is deliberately low-language and subtractive:
-
-1. Tap body signals rather than explain a story.
-2. Set intensity, time, and immediate need.
-3. Apply hard accessibility constraints.
-4. Receive one step, not a content feed.
-5. See why it was selected.
-6. Optionally copy a bridge sentence to a trusted person.
-7. Optionally teach the private model with an explicit outcome and after-intensity.
+This Hack for Humanity Summer 2026 submission targets Best Mental Health Tool, Best Design, Best Use of AI/ML, Responsible AI, and Best Innovation and Creativity.
 
 Unspool is not a diagnostic tool, treatment, therapist replacement, or crisis service.
 
-## AI/ML architecture
+## Stack
 
-The in-browser recommender is a transparent five-stage pipeline:
+- **Svelte 5 + SvelteKit 2 + TypeScript** for the installable, static-first interface
+- **C++23** for the provider-neutral production server, security headers, and static delivery
+- **A shared deterministic TypeScript core** for recommendations, exclusions, explanations, and the local synthetic audit
+- **Vitest + Playwright + Axe + CTest** for model, storage, browser, accessibility, and native security coverage
 
-1. **Safety gate** - Immediate-danger signals bypass recommendation and open human crisis support. Missing or out-of-range inputs fail closed.
-2. **Hybrid retrieval** - Structured overlap is combined with a compact feature-hashed embedding over signal, need, and evidence tags.
-3. **Contextual ranking** - Time, intensity, and accessibility are hard constraints. A local UCB-style contextual bandit balances prior helpfulness and limited exploration.
-4. **Verification** - High-intensity reflection and incompatible breath, movement, voice, and eye-state options are penalized or excluded.
-5. **Explanation** - The UI exposes signal match, time fit, access fit, evidence family, confidence, and local learning state.
+There is no React application, Node production server, cloud audit, hosted database, analytics SDK, or required hosting provider. Node is used only at build time and for developer tooling.
 
-There is no generative health conclusion and no raw health text is sent to a public model API.
+## Product behavior
 
-## Render Workflows
+1. Tap body signals instead of writing free text.
+2. Choose intensity, time, need, and access requirements.
+3. Hard constraints remove incompatible practices before scoring.
+4. Receive one short step—not a feed or chatbot.
+5. Inspect why it ranked and what was excluded.
+6. Optionally use fullscreen guidance with visual and nonverbal cues.
+7. Optionally report an explicit after-intensity and `helped`, `same`, or `harder` outcome.
 
-The repository contains a real TypeScript Render Workflow under [`workflow/`](./workflow). It is a synthetic safety-audit pipeline, not a decorative worker:
+An explicit `harder` response locally excludes that practice until the private model is erased. Skipped feedback stores no after score or inferred outcome.
 
-1. `generate_synthetic_cohort` creates bounded, non-person synthetic cases.
-2. `evaluate_case` fans out access-parity checks across the cohort with retries.
-3. `summarize_audit` produces a versioned model-card result.
-4. `run_model_card_audit` orchestrates the distributed chain.
+## Exact AI/ML architecture
 
-The web service triggers the Workflow through the official `@renderinc/sdk`. Only a seed and cohort size cross the boundary. Real check-ins never enter the Workflow.
+[`shared/model.ts`](./shared/model.ts) is the sole eight-practice model specification. [`shared/ranker.ts`](./shared/ranker.ts) contains the executable safety gate, hard exclusions, feature-hashed semantic signal, structured scoring, reversible local learning, and score decomposition. The application imports that core as `unspool-ranker-v2`; tests fail if presentation and model IDs diverge.
 
-Render currently does not support creating Workflow services from Blueprints, so [`render.yaml`](./render.yaml) intentionally defines the web service only. The Workflow is connected as a separate service using the supported setup below.
+The judge-facing Constraint Lab changes bounded synthetic inputs and immediately exposes rankings, component scores, exclusions, and reasons. Lab inputs stay in memory and never become check-in records.
+
+The local audit in [`shared/audit.ts`](./shared/audit.ts) generates 3,072 deterministic non-person scenarios and evaluates the exact same ranker entirely in the browser. The resulting versioned report covers safety violations, constraint violations, selection distribution, practice coverage, access coverage, and decision margins. It evaluates deterministic constraint behavior—not treatment efficacy, clinical validity, or demographic fairness.
 
 ## Run locally
 
-Requirements: Node.js 22+
+Requirements:
+
+- Node.js 22+
+- CMake 3.24+
+- A C++23 compiler and OpenSSL development libraries
+- On Windows, MinGW-w64 (`g++`) available on `PATH`
+
+Install and run the frontend development server:
 
 ```bash
 npm install
@@ -63,95 +55,63 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-Production verification:
-
-```bash
-npm run check
-```
-
-This runs the recommender safety tests, TypeScript validation for the Workflow, and the Vite production build.
-
-To exercise the production server:
+Build and run the production stack:
 
 ```bash
 npm run build
+npm run backend:build
 npm start
 ```
 
-Open `http://localhost:4173`. Without a Render API key, the live audit control returns an explicit local-safe-mode response.
+Open `http://localhost:4173`.
 
-## Deploy on Render
+Run verification:
 
-### 1. Deploy the web service
-
-Create a Blueprint from this repository. [`render.yaml`](./render.yaml) builds the Vite app and runs the hardened Node static server.
-
-### 2. Create the Workflow service
-
-In the Render Dashboard:
-
-- Select **New > Workflow**.
-- Name: `unspool-ai-audit`
-- Language: Node
-- Region: Oregon (the same region as the web service)
-- Root directory: `workflow`
-- Build command: `npm ci`
-- Start command: `npm start`
-
-After registration, confirm the task slug is `unspool-ai-audit/run_model_card_audit`.
-
-### 3. Connect the web service
-
-Set these server-side environment variables on `unspool-web`:
-
-```text
-RENDER_API_KEY=<Render API key>
-RENDER_AUDIT_TASK_SLUG=unspool-ai-audit/run_model_card_audit
+```bash
+npm run check
+npm run test:e2e
 ```
 
-Never prefix the key with `VITE_`; it must remain server-side.
+`npm run check` covers Svelte/TypeScript diagnostics, exact-ranker and migration tests, native C++ compilation/CTest, and the production build. Playwright then boots the real C++ server for full-flow, keyboard, Axe, 360px, reduced-motion, demo-isolation, local-audit, radio, CSP, and offline checks.
 
-## Privacy and safety
+## Deployment
 
-- No account, name, diagnosis, contact, location, free text, or demographic data is requested.
-- Raw check-in choices exist only in transient React state.
-- Persistent local storage contains a practice ID, explicit helped/same/harder feedback, completion state, and optional user-reported before/after intensity. Unspool never fabricates an after score.
-- The user can erase the entire local model in one action.
-- Crisis signaling bypasses ranking and links directly to real-time human support.
-- The app avoids certainty, medical instructions, and clinical efficacy claims.
-- Synthetic Workflow audits explicitly report that parity tests do not establish clinical efficacy.
-- The optional lofi player remains unloaded until Play. Playback contacts Lofi Cafe and exposes normal network metadata to that provider, but never sends check-in or model data.
+[`Dockerfile`](./Dockerfile) produces one small native service containing the prebuilt SvelteKit application. It has no provider-specific environment variables or integration. Deploy the image to any container host, VM, or local machine that can expose the `PORT` environment variable.
 
-See [`docs/PRIVACY_THREAT_MODEL.md`](./docs/PRIVACY_THREAT_MODEL.md) and [`docs/MODEL_CARD.md`](./docs/MODEL_CARD.md).
+The app’s core experience also remains usable as a static site. The C++ service is retained for the C++23 implementation, health checking, deterministic cache policy, and hashed Content Security Policy.
 
-## Evidence-informed content boundary
+## Privacy, safety, and offline boundaries
 
-The short practices are adapted conservatively from public self-help guidance, then bounded with opt-outs and cautions. They are not represented as treatment:
+- No account, name, diagnosis, contact, location, journal text, or demographic data is requested.
+- Raw check-in choices live only in client memory.
+- Local storage contains practice IDs, explicit outcome counts, completion state, and optional user-entered before/after intensity.
+- Legacy inferred after scores are discarded during v2 migration.
+- Crisis signaling bypasses ranking and opens human support in one action.
+- `?demo=1` keeps sessions and model updates in isolated memory.
+- The service worker caches only application assets; never radio media, check-ins, sessions, or the private model.
+- The local audit uses generated synthetic cases in memory and makes no network request.
+- The optional Lofi Cafe stream receives no request before Play and never receives check-in or model data.
 
-- The World Health Organization's *Doing What Matters in Times of Stress* describes brief grounding, noticing, naming, and reconnecting with the environment: <https://www.who.int/publications/i/item/9789240003927>
-- NHS guidance describes gentle breathing without forcing and allows seated or standing positions: <https://www.nhs.uk/mental-health/self-help/guides-tools-and-activities/breathing-exercises-for-stress/>
-- VA guidance describes five-senses grounding as a coping option in trauma-related distress: <https://www.ptsd.va.gov/professional/treat/essentials/anniversary_reactions.asp>
-- Affect-labeling research is mixed and context-dependent. That uncertainty is why reflection is only one optional candidate, is penalized at high intensity, and carries an opt-out: <https://pubmed.ncbi.nlm.nih.gov/36580454/> and <https://pubmed.ncbi.nlm.nih.gov/42311801/>
-- The 988 Lifeline describes free, confidential, judgment-free crisis support in the United States: <https://988lifeline.org/get-help/what-to-expect/>
-- Responsible-AI controls follow NIST AI RMF themes of safety, transparency, explainability, privacy enhancement, and harmful-bias management: <https://www.nist.gov/itl/ai-risk-management-framework>
+See [`docs/PRIVACY_THREAT_MODEL.md`](./docs/PRIVACY_THREAT_MODEL.md), [`docs/MODEL_CARD.md`](./docs/MODEL_CARD.md), and [`docs/ACCESSIBILITY_CHECKLIST.md`](./docs/ACCESSIBILITY_CHECKLIST.md).
 
-Content should receive clinician review before real-world clinical deployment.
+## Evidence boundary
+
+Every practice has an in-product ledger with intended use, evidence family, cautions, contraindication logic, primary or authoritative sources, last-reviewed date, and the label **literature-informed; not clinician reviewed**. These sources support the rationale family, not the efficacy of Unspool’s exact sequence. External clinical review is required before clinical deployment.
 
 ## Key files
 
-- [`src/App.jsx`](./src/App.jsx) - complete product UI and flows
-- [`src/lib/engine.js`](./src/lib/engine.js) - recommender, safety gate, local learning, explanations
-- [`src/data/interventions.js`](./src/data/interventions.js) - bounded practice library and cautions
-- [`workflow/src/tasks.ts`](./workflow/src/tasks.ts) - distributed synthetic model-card audit
-- [`server.mjs`](./server.mjs) - production server and Workflow trigger
-- [`test/engine.test.js`](./test/engine.test.js) - safety and access-parity tests
-- [`docs/DEVPOST_SUBMISSION.md`](./docs/DEVPOST_SUBMISSION.md) - submission copy
-- [`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) - four-minute demo plan
-
-## Original visual asset
-
-The hero artwork in `public/assets/unspool-sanctuary.png` was created for this project with OpenAI's built-in image generation tool. Prompt direction: an abstract paper-and-frosted-glass sanctuary, a luminous path from visual tangling into a calm clearing, deep indigo with coral and ivory light, no people, text, logos, medical symbols, or therapy clichés.
+- [`src/routes/+page.svelte`](./src/routes/+page.svelte) — application flow and in-memory check-in state
+- [`src/lib/components/`](./src/lib/components/) — Svelte product surfaces
+- [`src/lib/storage.ts`](./src/lib/storage.ts) — explicit v2 records and migrations
+- [`shared/model.ts`](./shared/model.ts) — sole model specification
+- [`shared/ranker.ts`](./shared/ranker.ts) — deterministic executable ranker
+- [`shared/audit.ts`](./shared/audit.ts) — reproducible local corpus and report
+- [`backend/src/main.cpp`](./backend/src/main.cpp) — provider-neutral C++23 web service
+- [`backend/src/static_security.cpp`](./backend/src/static_security.cpp) — hashed CSP generation
+- [`e2e/accessibility.spec.js`](./e2e/accessibility.spec.js) — end-to-end and accessibility proof
+- [`docs/DEVPOST_SUBMISSION.md`](./docs/DEVPOST_SUBMISSION.md) — submission copy
+- [`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) — four-minute demo plan
 
 ## License
 
-Unspool is distributed under the GNU Lesser General Public License v2.1. See [`LICENSE`](./LICENSE).
+GNU Lesser General Public License v2.1. See [`LICENSE`](./LICENSE).

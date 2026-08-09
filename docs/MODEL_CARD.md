@@ -1,6 +1,6 @@
-# Unspool local ranker - model card
+# Unspool local ranker — model card
 
-Version: 1.0  
+Version: `unspool-ranker-v2`
 Status: Hackathon / pre-clinical  
 Owner: Unspool project
 
@@ -24,7 +24,9 @@ Select one brief, non-diagnostic self-regulation practice from a curated library
 - Hard access and intensity constraints
 - UCB-style local bandit
 - Plain-language explanation object
-- Synthetic distributed access-parity audit on Render Workflows
+- Exact executable ranking core shared by recommendations, the Constraint Lab, and the local audit
+- Synthetic constraint audit computed entirely in browser memory
+- Provider-neutral C++23 static and security boundary
 
 ## Training data
 
@@ -44,19 +46,22 @@ Automated checks cover:
 - Breath-sensitive exclusion
 - Local-learning update
 - Safe candidate availability across access-preference variants
-- Type safety of the distributed Workflow
+- Exact recommendation/audit decision and score parity
+- Practice-library/model-spec ID parity
+- Deterministic coverage of every production signal, need, intensity band, time option, and access flag
 
-The Render Workflow also reports unsafe selections, decision margins, selection distribution, protected attributes used, and whether raw health data was used.
+The local audit evaluates 3,072 fixed synthetic scenarios with the production ranker. It reports unsafe selections, constraint violations, decision margins, selection distribution, practice coverage, access coverage, protected attributes used, seed, and limitations. It does not evaluate treatment efficacy, clinical validity, or demographic fairness, and it sends no audit data over the network.
 
 ## Known limitations
 
 - Metadata retrieval is not clinical judgment.
 - Feature-hashed similarity is intentionally compact and can collide.
-- One-bit feedback can reflect context rather than intervention quality.
+- Explicit `helped`, `same`, or `harder` feedback can reflect context rather than intervention quality.
 - No demographic inputs means the model cannot measure demographic outcome parity in production; this is an intentional privacy tradeoff and must be supplemented with consented, participatory research.
 - Synthetic access audits cannot establish clinical safety or efficacy.
 - The practice library is English-first and culturally incomplete.
 - Crisis resources currently foreground the U.S./Canada 988 route and a global directory; production routing must be jurisdiction-aware.
+- Content is literature-informed but has not received clinician review for this project.
 
 ## Human control
 
