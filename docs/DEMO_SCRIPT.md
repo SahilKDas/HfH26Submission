@@ -45,15 +45,15 @@ Briefly play the bottom-left lofi radio, then pause it.
 
 > “Optional ambience stays separate from the health flow. It never autoplays, and the provider receives no check-in data.”
 
-## 2:40-3:20 - Responsible AI and Render
+## 2:40-3:20 - Responsible AI proof
 
 Navigate to **How it works** and move through the five-stage pipeline.
 
-Scroll to the Render console and click **Run a synthetic safety audit**.
+Scroll to the audit console and click **Run local audit**.
 
-> “Render Workflows turns safety evaluation into infrastructure. A root task generates a bounded synthetic cohort, fans out 48 access-parity checks with automatic retries, and composes a versioned model card. The web app triggers the live Workflow through Render’s SDK. Real check-ins never enter it.”
+> “Safety claims should be executable. This browser just generated and evaluated 3,072 fixed synthetic scenarios with the exact production ranker. The report is reproducible and downloadable, and no audit data left this device.”
 
-Show the queued run ID, then briefly cut to the Render Dashboard run graph if available.
+Show zero unsafe selections and zero constraint violations, then download the JSON report.
 
 ## 3:20-3:40 - Safety boundary and close
 
@@ -68,10 +68,9 @@ Close on the hero.
 ## Recording checklist
 
 - Record at 1440p or higher with browser zoom at 100%.
-- Use a clean production Render URL.
-- Pre-warm the Render web service and Workflow.
+- Use a clean production URL or the local C++23 server.
 - Clear local storage before the first take.
 - Keep the cursor slow and intentional.
 - Add captions; do not rely on narration alone.
-- Show the Workflow run ID and Dashboard once for sponsor verification.
+- Show the local audit model version, seed, scenario count, and downloadable report.
 - End before 3:50.

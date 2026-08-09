@@ -4,25 +4,37 @@
   "version": "1.0.0",
   "license": "LGPL-2.1-only",
   "type": "module",
-  "workspaces": [
-    "workflow"
-  ],
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "start": "node server.mjs",
-    "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test",
-    "test:workflow": "npm run check --workspace workflow",
-    "check": "npm run test && npm run test:workflow && npm run build"
+    "start": "node scripts/backend.mjs run",
+    "preview": "node scripts/backend.mjs run",
+    "check:svelte": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "node scripts/backend.mjs build && npm run build && playwright test",
+    "backend:configure": "node scripts/backend.mjs configure",
+    "backend:build": "node scripts/backend.mjs build",
+    "backend:test": "node scripts/backend.mjs test",
+    "backend:check": "node scripts/backend.mjs check",
+    "check": "npm run check:svelte && npm run test && npm run backend:check && npm run build"
   },
   "dependencies": {
-    "@renderinc/sdk": "^0.6.0",
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "lucide-react": "latest"
+    "@fontsource/dm-sans": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
+    "@lucide/svelte": "^1.30.0",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.70.2",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "svelte": "^5.56.8",
+    "vite": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.1",
+    "@testing-library/svelte": "^5.4.2",
+    "jsdom": "^29.1.1",
+    "svelte-check": "^4.7.5",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  }
 }

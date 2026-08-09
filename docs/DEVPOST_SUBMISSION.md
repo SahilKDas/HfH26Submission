@@ -20,13 +20,13 @@ Unspool is a low-language mental-health tool for acute overwhelm—not a journal
 
 The user taps body signals, sets intensity and available time, and chooses what would help most. Access needs such as “skip breathwork,” “keep my eyes open,” “silent,” and “seated” become hard ranking constraints. Unspool then returns one time-bounded, evidence-informed practice, explains exactly why it was selected, and supplies a ready-to-send sentence for reaching a trusted person.
 
-Afterward, one “helped / did not help” tap teaches a private local model. No story, diagnosis, or identity is stored.
+Afterward, an optional explicit after-intensity plus `helped`, `same`, or `harder` outcome can teach a private local model. Skipping feedback stores neither an inferred after score nor an outcome. No story, diagnosis, or identity is stored.
 
 If the user says they may not be safe, recommendation stops. Unspool steps aside for real-time human crisis support.
 
 ## How we built it
 
-The interface is React and Vite with a custom accessible design system, responsive layout, reduced-motion support, high-contrast support, visible focus states, semantic dialogs, and keyboard-operable controls.
+The interface is Svelte 5 and SvelteKit 2 with a custom accessible design system, static-first offline support, responsive layout, reduced-motion support, high-contrast support, visible focus states, semantic dialogs, and keyboard-operable controls. The production service is native C++23: it serves the built app, applies the security policy, owns the audit lifecycle, and exposes a deliberately tiny API boundary.
 
 The AI/ML system is a five-stage, in-browser pipeline:
 
@@ -36,13 +36,13 @@ The AI/ML system is a five-stage, in-browser pipeline:
 4. A UCB-style local bandit that learns from explicit helped/same/harder outcomes and respects local exclusions.
 5. A plain-language explanation layer exposing match factors and uncertainty.
 
-Render Workflows powers our distributed safety-audit pipeline. A root Workflow generates bounded synthetic cohorts, fans out 48 accessibility-parity evaluations with retries, and composes a versioned model-card result. The web service triggers it through Render’s official SDK. No real check-in enters the Workflow.
+Our safety audit runs entirely in browser memory. It deterministically generates 3,072 bounded synthetic cases, evaluates them with the exact production ranker, and composes a downloadable versioned model-card result. No real check-in enters the audit and no audit request leaves the device.
 
 ## Challenges we ran into
 
 The hardest design problem was resisting feature inflation. In distress, more capability can mean less usability. We repeatedly removed copy, choices, and interpretation. The result provides one recommendation, not a feed.
 
-The hardest technical problem was making personalization compatible with strict privacy. We avoided transcripts and user profiles entirely. The local bandit needs only a practice ID and explicit bounded outcome counts, and the cloud audit needs only synthetic inputs. After-intensity is optional and never inferred.
+The hardest technical problem was making personalization compatible with strict privacy. We avoided transcripts and user profiles entirely. The local bandit needs only a practice ID and explicit bounded outcome counts, while the audit is deterministic and runs on synthetic inputs in browser memory. After-intensity is optional and never inferred.
 
 We also designed around mixed evidence. A technique that helps one person can activate another. That is why breath, eye state, voice, position, intensity, and opt-out cautions are part of the ranking system—not footnotes.
 
@@ -52,7 +52,7 @@ We also designed around mixed evidence. A technique that helps one person can ac
 - A real, explainable ML pipeline instead of a single opaque API call.
 - Crisis escalation that bypasses AI rather than asking AI to manage danger.
 - Raw check-ins that never leave transient in-browser state.
-- A distributed Render Workflow that audits the model with synthetic cohorts.
+- A reproducible local audit that proves constraint behavior without cloud infrastructure.
 - A polished design that treats calm, accessibility, and agency as functional requirements.
 - Automated tests for danger bypass, explanation coverage, breath sensitivity, local learning, empty input, and accessibility parity.
 
@@ -68,8 +68,8 @@ Before clinical use, we would run participatory research with people who experie
 
 ## Built with
 
-React, Vite, JavaScript, TypeScript, Node.js, Render Web Services, Render Workflows, Render TypeScript SDK, localStorage, custom hybrid retrieval, contextual bandit ranking, and OpenAI image generation for the original hero artwork.
+Svelte 5, SvelteKit 2, TypeScript, C++23, CMake, cpp-httplib, OpenSSL, localStorage, custom hybrid retrieval, contextual bandit ranking, Vitest, Playwright, Axe, CTest, Docker, and OpenAI image generation for the original hero artwork.
 
 ## Tracks
 
-Tools for Mental Health; Best Use of AI/ML; Responsible AI; Best Design; Best Use of Render; Best Innovation and Creativity.
+Tools for Mental Health; Best Use of AI/ML; Responsible AI; Best Design; Best Innovation and Creativity.
