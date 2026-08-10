@@ -1,116 +1,100 @@
 # Unspool
 
-**A low-language bridge from overwhelm to one safe next step.**
+**One safe step now. A better-fitting step next time.**
 
-Unspool is a local-first mental-health web app for moments when explaining a story is too much. A short check-in captures body signals, intensity, time, immediate need, and access settings. A deterministic and inspectable ranker returns one bounded practice plus an optional sentence for reaching a trusted person.
+Unspool is a closed-loop adaptive support engine for moments when language and executive function disappear. A bounded body-first check-in becomes one guided practice. An optional explicit outcome updates a safety-constrained contextual bandit so the next eligible decision can fit better.
 
-This Hack for Humanity Summer 2026 submission targets Best Mental Health Tool, Best Design, Best Use of AI/ML, Responsible AI, and Best Innovation and Creativity.
+Unspool is pre-clinical decision support. It does not diagnose, treat, replace a clinician, or provide crisis response.
 
-Unspool is not a diagnostic tool, treatment, therapist replacement, or crisis service.
+## What is technically different
 
-## Stack
+- Svelte 5 and SvelteKit provide the accessible guided experience, PWA resilience, Constraint Lab, Response Map, and lofi companion.
+- Bun 1.3.14 owns JavaScript dependency installation, development orchestration, test invocation, and the frontend build.
+- Django 6 and Django REST Framework own live inference, anonymous consent, durable decisions, idempotent outcomes, personal policies, model snapshots, evaluation jobs, and admin-controlled promotion.
+- PostgreSQL 17 is the runtime database and job queue. Workers claim jobs transactionally with `select_for_update(skip_locked=True)`; no Redis is required.
+- NumPy powers a 25-feature LinUCB policy. Hard safety and accessibility exclusions run before learning and cannot be overridden by learned scores.
+- The deterministic TypeScript `unspool-ranker-v2` remains a clearly labeled offline fallback.
 
-- **Svelte 5 + SvelteKit 2 + TypeScript** for the installable, static-first interface
-- **C++23** for the provider-neutral production server, security headers, and static delivery
-- **A shared deterministic TypeScript core** for recommendations, exclusions, explanations, and the local synthetic audit
-- **Vitest + Playwright + Axe + CTest** for model, storage, browser, accessibility, and native security coverage
+The canonical eight-practice specification lives in [`shared/practices.json`](./shared/practices.json) and is consumed by both Python and TypeScript.
 
-There is no React application, Node production server, cloud audit, hosted database, analytics SDK, or required hosting provider. Node is used only at build time and for developer tooling.
+## Adaptive loop
 
-## Product behavior
+1. Validate bounded signals, need, intensity, time, and access requirements.
+2. Bypass recommendation entirely when immediate safety is uncertain.
+3. Remove incompatible practices through hard exclusions.
+4. Build an inspectable evidence-informed baseline score.
+5. Re-rank eligible candidates with the active global and anonymous personal LinUCB policies.
+6. Update only the selected arm from an explicit `helped`, `same`, or `harder` outcome.
+7. Train global challengers only after 200 new consented outcomes.
+8. Require zero safety violations plus manual Django-admin approval before promotion.
 
-1. Tap body signals instead of writing free text.
-2. Choose intensity, time, need, and access requirements.
-3. Hard constraints remove incompatible practices before scoring.
-4. Receive one short step—not a feed or chatbot.
-5. Inspect why it ranked and what was excluded.
-6. Optionally use fullscreen guidance with visual and nonverbal cues.
-7. Optionally report an explicit after-intensity and `helped`, `same`, or `harder` outcome.
+Optional after-intensity is charted exactly as reported and never converted into a training reward.
 
-An explicit `harder` response locally excludes that practice until the private model is erased. Skipped feedback stores no after score or inferred outcome.
+## Model Room
 
-## Exact AI/ML architecture
+The Method page exposes the real backend lifecycle. A live job trains a disposable challenger using 12,288 seeded synthetic interactions and evaluates it on 3,072 held-out constraint scenarios. Jobs survive browser navigation and expose queued, running, completed, failed, retry, cache, and JSON-download states.
 
-[`shared/model.ts`](./shared/model.ts) is the sole eight-practice model specification. [`shared/ranker.ts`](./shared/ranker.ts) contains the executable safety gate, hard exclusions, feature-hashed semantic signal, structured scoring, reversible local learning, and score decomposition. The application imports that core as `unspool-ranker-v2`; tests fail if presentation and model IDs diverge.
+Simulation results are isolated from production and explicitly demonstrate engineering behavior—not clinical effectiveness.
 
-The judge-facing Constraint Lab changes bounded synthetic inputs and immediately exposes rankings, component scores, exclusions, and reasons. Lab inputs stay in memory and never become check-in records.
+## Local setup
 
-The local audit in [`shared/audit.ts`](./shared/audit.ts) generates 3,072 deterministic non-person scenarios and evaluates the exact same ranker entirely in the browser. The resulting versioned report covers safety violations, constraint violations, selection distribution, practice coverage, access coverage, and decision margins. It evaluates deterministic constraint behavior—not treatment efficacy, clinical validity, or demographic fairness.
+Requirements: Bun 1.3.14, Python 3.13, and PostgreSQL 17.
 
-## Run locally
-
-Requirements:
-
-- Node.js 22+
-- CMake 3.24+
-- A C++23 compiler and OpenSSL development libraries
-- On Windows, MinGW-w64 (`g++`) available on `PATH`
-
-Install and run the frontend development server:
-
-```bash
-npm install
-npm run dev
+```powershell
+bun install
+py -3.13 -m venv .venv
+& .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-Open `http://localhost:5173`.
+Create a PostgreSQL database and set `DATABASE_URL` in your shell or environment manager. Then:
 
-Build and run the production stack:
-
-```bash
-npm run build
-npm run backend:build
-npm start
+```powershell
+bun run backend:migrate
+bun run dev
 ```
 
-Open `http://localhost:4173`.
+`bun run dev` starts Vite at `http://localhost:5173`, Django at `http://localhost:8000`, and the PostgreSQL model worker. The Vite server proxies `/api` and `/healthz` to Django. Django can still be run independently with `python backend/manage.py runserver`.
 
-Run verification:
+For a containerized PostgreSQL/web/worker stack on a machine with Docker:
 
 ```bash
-npm run check
-npm run test:e2e
+docker compose up --build
 ```
 
-`npm run check` covers Svelte/TypeScript diagnostics, exact-ranker and migration tests, native C++ compilation/CTest, and the production build. Playwright then boots the real C++ server for full-flow, keyboard, Axe, 360px, reduced-motion, demo-isolation, local-audit, radio, CSP, and offline checks.
+## Verification
 
-## Deployment
+```powershell
+bun run check:svelte
+bun run test
+bun run backend:test
+bun run build
+bun run test:e2e
+```
 
-[`Dockerfile`](./Dockerfile) produces one small native service containing the prebuilt SvelteKit application. It has no provider-specific environment variables or integration. Deploy the image to any container host, VM, or local machine that can expose the `PORT` environment variable.
+The local backend test script sets an explicit SQLite test-only flag for fast isolation. Production and CI acceptance use PostgreSQL; the health endpoint names the active database backend so SQLite cannot be presented as production proof.
 
-The app’s core experience also remains usable as a static site. The C++ service is retained for the C++23 implementation, health checking, deterministic cache policy, and hashed Content Security Policy.
+Coverage includes hard exclusions, 25-feature encoding, adaptive learning, harder-feedback removal, 3,072-case safety evaluation, consent, hashed credentials, idempotency, deletion, migrations, CSP, guided timing, radio behavior, PWA fallback, keyboard access, Axe, and the live Model Room worker.
 
-## Privacy, safety, and offline boundaries
+## Consent and retention
 
-- No account, name, diagnosis, contact, location, journal text, or demographic data is requested.
-- Raw check-in choices live only in client memory.
-- Local storage contains practice IDs, explicit outcome counts, completion state, and optional user-entered before/after intensity.
-- Legacy inferred after scores are discarded during v2 migration.
-- Crisis signaling bypasses ranking and opens human support in one action.
-- `?demo=1` keeps sessions and model updates in isolated memory.
-- The service worker caches only application assets; never radio media, check-ins, sessions, or the private model.
-- The local audit uses generated synthetic cases in memory and makes no network request.
-- The optional Lofi Cafe stream receives no request before Play and never receives check-in or model data.
+- Unconsented online inference is transient.
+- Persistent learning is an unchecked, explicit opt-in.
+- A random HttpOnly credential identifies an anonymous profile; only its hash is stored.
+- Consented events contain bounded decision context, selected practice, model version, explicit outcome, optional after-intensity, completion, and elapsed time.
+- Names, diagnoses, journal text, contacts, IP addresses, and user-agent strings are not retained.
+- Raw decisions and outcomes expire after 30 days; profile reset deletes the anonymous profile, personal policy, decisions, and retained events immediately.
+- The radio provider receives no request before Play and never receives model or check-in data.
 
-See [`docs/PRIVACY_THREAT_MODEL.md`](./docs/PRIVACY_THREAT_MODEL.md), [`docs/MODEL_CARD.md`](./docs/MODEL_CARD.md), and [`docs/ACCESSIBILITY_CHECKLIST.md`](./docs/ACCESSIBILITY_CHECKLIST.md).
+## Main files
 
-## Evidence boundary
-
-Every practice has an in-product ledger with intended use, evidence family, cautions, contraindication logic, primary or authoritative sources, last-reviewed date, and the label **literature-informed; not clinician reviewed**. These sources support the rationale family, not the efficacy of Unspool’s exact sequence. External clinical review is required before clinical deployment.
-
-## Key files
-
-- [`src/routes/+page.svelte`](./src/routes/+page.svelte) — application flow and in-memory check-in state
-- [`src/lib/components/`](./src/lib/components/) — Svelte product surfaces
-- [`src/lib/storage.ts`](./src/lib/storage.ts) — explicit v2 records and migrations
-- [`shared/model.ts`](./shared/model.ts) — sole model specification
-- [`shared/ranker.ts`](./shared/ranker.ts) — deterministic executable ranker
-- [`shared/audit.ts`](./shared/audit.ts) — reproducible local corpus and report
-- [`backend/src/main.cpp`](./backend/src/main.cpp) — provider-neutral C++23 web service
-- [`backend/src/static_security.cpp`](./backend/src/static_security.cpp) — hashed CSP generation
-- [`e2e/accessibility.spec.js`](./e2e/accessibility.spec.js) — end-to-end and accessibility proof
-- [`docs/DEVPOST_SUBMISSION.md`](./docs/DEVPOST_SUBMISSION.md) — submission copy
-- [`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) — four-minute demo plan
+- [`backend/core/engine.py`](./backend/core/engine.py) — safety gate, baseline, features, adaptive policy, and personal updates
+- [`backend/core/api.py`](./backend/core/api.py) — consent, inference, outcomes, insights, model status, and simulation contracts
+- [`backend/core/jobs.py`](./backend/core/jobs.py) — durable worker, simulation, training, and evaluation
+- [`backend/core/models.py`](./backend/core/models.py) — profiles, policies, decisions, outcomes, snapshots, and jobs
+- [`src/lib/api.ts`](./src/lib/api.ts) — same-origin adaptive client and offline boundary
+- [`src/lib/components/AuditConsole.svelte`](./src/lib/components/AuditConsole.svelte) — live Model Room
+- [`shared/practices.json`](./shared/practices.json) — canonical practice specification
 
 ## License
 

@@ -1,57 +1,52 @@
-# Privacy and threat model
+# Data and threat model
 
-## Data inventory
+Privacy is a system constraint, not Unspool’s primary product claim. The primary system is an adaptive support loop; this document describes how its backend limits avoidable risk.
 
-### Transient only
+## Data flows
 
-- Selected body-signal IDs
-- Chosen immediate need
-- Intensity and available time
-- Breath, eye-state, silence, and position preferences
+### Unconsented recommendation
 
-These values exist in Svelte component memory for the active check-in and are discarded when the flow closes or reloads.
+The browser sends only bounded signals, need, intensity, time, access flags, and immediate-danger state to Django. The request is validated and processed in memory. No decision, body, IP address, or user-agent is written to application storage.
 
-### Optional local persistence
+### Consented adaptive recommendation
 
-- Intervention ID
-- Tried count
-- Helpful count
-- Harder/exclusion count
-- Explicit helped/same/harder outcome
-- Completion state
-- Before intensity and optional user-reported after intensity
-- Timestamp and random local session ID
+Opt-in creates an anonymous profile with a random HttpOnly cookie. PostgreSQL stores the credential hash, bounded context, selected practice, model version, decision trace, and expiration. Explicit feedback adds outcome, optional after-intensity, completion, and elapsed time.
 
-No text, identity, diagnosis, demographic attribute, contact, or location is stored.
+### Offline fallback
 
-### Optional third-party radio request
+When Django is unavailable, deterministic-v2 runs locally. The interface labels the policy source. Offline feedback remains local and is never backfilled as an unverifiable training event.
 
-The lofi stream is not loaded until the user presses Play. Playback connects directly to `radio.loficafe.net`, which can receive the listener's IP address, user agent, and ordinary request metadata. Unspool sends no check-in choices, local-model values, identity fields, or analytics with that request. Playback never resumes automatically after reload.
+### Model Room
 
-### Local synthetic audit
+The public simulation uses deterministic generated contexts and synthetic rewards. Jobs and aggregate reports are stored, but generated events are never inserted into profile, decision, or outcome tables and generated challengers cannot be promoted.
 
-The audit generates 3,072 fixed scenarios from deterministic seed `2026` in browser memory, evaluates them with the production ranker, and discards them when the page is left. It creates no request, server record, task identifier, or provider account.
+### Lofi radio
 
-### Offline application cache
+No request reaches Lofi Cafe before Play. The provider receives ordinary network metadata from direct audio playback but receives no application payload, profile credential, check-in, decision, or outcome.
 
-The service worker precaches only the built application shell, static practice content, self-hosted fonts, icon, and visual assets. It does not cache radio media, check-in state, local-model records, or browser storage. Core use and the synthetic audit work offline after one successful load; only the optional radio reports that connectivity is required.
+## Retention and control
 
-## Threats and controls
+- Raw decisions and outcome events expire after 30 days.
+- Personal response counts and matrices persist with the anonymous profile until reset.
+- Reset deletes the profile, policy, decisions, and events through database cascades and clears the cookie.
+- Production logs must omit request bodies, cookies, IP addresses, and user-agent values.
+- Backups must follow the same maximum retention window before real deployment.
 
-| Threat | Control | Residual risk |
+## Controls
+
+| Threat | Control | Residual limitation |
 |---|---|---|
-| Prompt injection | No free-text model input; bounded enums and numeric ranges | Malicious modification of client code requires separate web compromise |
-| Health hallucination | No generative health output; curated static practice library | Practice wording still requires clinician review |
-| Raw health-data leakage | In-browser processing; no analytics; no third-party model endpoint | Local browser storage is available to the browser profile and OS |
-| Radio-provider disclosure | Explicit Play action, `preload="none"`, provider notice, isolated media CSP, no check-in data in the request | The stream provider necessarily receives normal network metadata such as IP address |
-| Re-identification | No identity or demographics; randomized local IDs | A compromised device can observe local activity |
-| Unsafe recommendation | Crisis bypass, intensity constraints, access exclusions, cautions, tests | No automated system can infer all personal contraindications |
-| Bias hidden by aggregate scores | Synthetic access-parity matrix and selection distribution | Synthetic audits do not represent lived experience or clinical efficacy |
-| Stale offline application | Explicit service-worker update prompt and old-cache cleanup | A user may defer an available update |
-| Demo contamination | `?demo=1` uses in-memory outcomes and sessions and disables audio-setting persistence | Reloading intentionally resets all demo state |
-| Secret exposure | No provider key exists; CSP is generated with an exact bootstrap hash; `.env` is ignored | Third-party dependency integrity remains a build responsibility |
-| Retention without control | One-action local erase; 30-session cap | Browser backups may persist according to OS/browser policy |
+| Forged outcome updates | Random HttpOnly credential, same-origin CSRF, decision ownership, one-to-one outcome, UUID idempotency | A compromised browser origin can act as the user |
+| Model poisoning | Bounded schema, one outcome per issued decision, throttling, minimum event threshold, immutable snapshots, manual promotion | Coordinated valid-looking feedback remains possible |
+| Learned score bypasses safety | Eligibility computed before ML; excluded arms never enter adaptive ranking | The best eligible choice can still be unhelpful |
+| Sensitive log leakage | No body/cookie logging in application; generic client errors; private internal job errors | Infrastructure defaults require deployment review |
+| Profile correlation | No account; random credential; no IP/UA retention; 30-day raw retention | Repeated bounded contexts remain sensitive health-adjacent data |
+| CSRF | SameSite cookie, Django CSRF token, same-origin API | XSS would bypass browser-origin controls |
+| XSS and third-party exfiltration | Hashed-script CSP, no third-party scripts/iframes, restricted media origin | Style inline remains allowed for generated progress styles |
+| Worker duplication | PostgreSQL transaction with `select_for_update(skip_locked=True)` | SQLite test mode cannot prove PostgreSQL locking semantics |
+| Unsafe model promotion | 3,072-case audit, coverage gate, immutable candidate, manual admin action | Synthetic gates do not establish clinical validity |
+| Crisis misrouting | Immediate danger bypasses ML and exposes 988 plus international directory | Locale-specific routing remains incomplete |
 
-## Deployment boundary
+## Deployment requirements
 
-This hackathon build is pre-clinical. It must not be deployed as a substitute for professional care. Before broader use: clinician content review, participatory safety research, independent penetration testing, external accessibility review, jurisdiction-specific crisis routing, privacy counsel, and a prospective outcomes study are required.
+Before accepting real users: TLS, rotated Django secret, Secure cookies, restricted admin network/access, managed PostgreSQL encryption and backups, structured log redaction, dependency scanning, rate limits shared across web workers, penetration testing, privacy notice review, and deletion/backups verification.

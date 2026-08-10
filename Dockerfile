@@ -1,21 +1,17 @@
-FROM node:22-bookworm-slim AS frontend
+FROM oven/bun:1.3.14-slim AS frontend
 WORKDIR /src
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN bun run build
 
-FROM debian:bookworm-slim AS native
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential cmake git libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
-WORKDIR /src
-COPY backend backend
-RUN cmake -S backend -B backend/build -DCMAKE_BUILD_TYPE=Release && cmake --build backend/build --parallel
-
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
+FROM python:3.13-slim
 WORKDIR /app
-COPY --from=native /src/backend/build/unspool_server /app/unspool_server
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+COPY backend /app/backend
+COPY shared /app/shared
 COPY --from=frontend /src/build /app/build
-ENV PORT=10000 UNSPOOL_STATIC_ROOT=/app/build
-EXPOSE 10000
-CMD ["/app/unspool_server"]
+ENV PORT=8000 UNSPOOL_STATIC_ROOT=/app/build PYTHONDONTWRITEBYTECODE=1 DJANGO_DEBUG=0 PROFILE_COOKIE_SECURE=1
+EXPOSE 8000
+CMD ["sh", "-c", "python backend/manage.py migrate && gunicorn --chdir backend --bind 0.0.0.0:${PORT} --workers 2 --threads 4 unspool_backend.wsgi:application"]

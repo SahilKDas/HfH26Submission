@@ -6,70 +6,75 @@ Unspool
 
 ## Tagline
 
-When words are hard, start with one signal.
+One safe step now. A better-fitting step next time.
 
 ## Inspiration
 
-The moment someone most needs support is often the moment they have the least language and executive function available. Yet most mental-health apps open with a blank page, a chatbot prompt, or a long menu. “How are you feeling?” can become another task to fail.
-
-We built Unspool around a different premise: start below language. A tight chest, racing thoughts, numbness, restlessness, or too much sensory input can be enough information to choose one safe next step.
+The moment someone most needs support is often the moment they have the least language and executive function available. Most mental-health tools still begin with a blank journal page, a chatbot prompt, or a long library. Unspool begins below language: racing thoughts, a tight chest, numbness, shutdown, restlessness, or sensory overload are enough to start.
 
 ## What it does
 
-Unspool is a low-language mental-health tool for acute overwhelm—not a journal and not a therapist bot.
+Unspool is a closed-loop adaptive support engine for acute overwhelm. A ten-second bounded check-in captures body signals, intensity, available time, immediate need, and access requirements. It returns one brief evidence-informed practice—not a feed—and explains the decision.
 
-The user taps body signals, sets intensity and available time, and chooses what would help most. Access needs such as “skip breathwork,” “keep my eyes open,” “silent,” and “seated” become hard ranking constraints. Unspool then returns one time-bounded, evidence-informed practice, explains exactly why it was selected, and supplies a ready-to-send sentence for reaching a trusted person.
+After the practice, the user may explicitly choose `helped`, `same`, or `harder`. That response updates an anonymous personal contextual bandit so the next eligible decision can fit better. `Harder` excludes that practice from the personal policy. Optional after-intensity is charted exactly as reported and never inferred or silently converted into a reward.
 
-Afterward, an optional explicit after-intensity plus `helped`, `same`, or `harder` outcome can teach a private local model. Skipping feedback stores neither an inferred after score nor an outcome. No story, diagnosis, or identity is stored.
-
-If the user says they may not be safe, recommendation stops. Unspool steps aside for real-time human crisis support.
+Immediate danger bypasses recommendation and opens human crisis support in one action.
 
 ## How we built it
 
-The interface is Svelte 5 and SvelteKit 2 with a custom accessible design system, static-first offline support, responsive layout, reduced-motion support, high-contrast support, visible focus states, semantic dialogs, and keyboard-operable controls. The production service is native C++23: it serves the built app, applies the security policy, owns the audit lifecycle, and exposes a deliberately tiny API boundary.
+The Svelte 5/SvelteKit interface includes the body-first check-in, low-stimulation guided mode, Response Map, Constraint Lab, evidence ledger, installable offline shell, Web Audio cues, and an optional Lofi Cafe stream. Bun owns dependency installation, local process orchestration, test invocation, and the frontend build while leaving Python inference and PostgreSQL persistence to the backend.
 
-The AI/ML system is a five-stage, in-browser pipeline:
+Django 6 and Django REST Framework run the adaptive lifecycle. PostgreSQL stores anonymous consent, durable recommendation decisions, idempotent outcomes, personal policies, model snapshots, evaluation jobs, and promotion state. A separate worker claims jobs transactionally from PostgreSQL, so training never blocks a recommendation request and no Redis or provider-specific workflow product is required.
 
-1. A fail-closed safety gate.
-2. Hybrid retrieval using structured matches plus compact feature-hashed embeddings.
-3. Contextual ranking with intensity, time, and access constraints.
-4. A UCB-style local bandit that learns from explicit helped/same/harder outcomes and respects local exclusions.
-5. A plain-language explanation layer exposing match factors and uncertainty.
+The decision pipeline has five stages:
 
-Our safety audit runs entirely in browser memory. It deterministically generates 3,072 bounded synthetic cases, evaluates them with the exact production ranker, and composes a downloadable versioned model-card result. No real check-in enters the audit and no audit request leaves the device.
+1. Bounded validation and crisis bypass.
+2. Hard time, intensity, breath, eye-state, sound, posture, and personal-harder exclusions.
+3. An inspectable evidence prior combining structured matching and feature-hashed retrieval.
+4. A 25-feature LinUCB policy combining active global and anonymous personal estimates.
+5. A model lifecycle that trains challengers, evaluates safety and coverage, and requires manual approval before promotion.
 
-## Challenges we ran into
+When Django is unavailable, the app clearly labels and uses deterministic `unspool-ranker-v2`; offline feedback remains local and cannot become an unverifiable training event.
 
-The hardest design problem was resisting feature inflation. In distress, more capability can mean less usability. We repeatedly removed copy, choices, and interpretation. The result provides one recommendation, not a feed.
+## Model Room
 
-The hardest technical problem was making personalization compatible with strict privacy. We avoided transcripts and user profiles entirely. The local bandit needs only a practice ID and explicit bounded outcome counts, while the audit is deterministic and runs on synthetic inputs in browser memory. After-intensity is optional and never inferred.
+Judges can run the backend live. The Model Room queues a disposable challenger, trains it on 12,288 deterministic synthetic interactions, evaluates it on 3,072 held-out scenarios, and reports simulated reward, regret, coverage, uncertainty, decision margins, unsafe selections, and constraint violations. Identical completed runs are cached for ten minutes.
 
-We also designed around mixed evidence. A technique that helps one person can activate another. That is why breath, eye state, voice, position, intensity, and opt-out cautions are part of the ranking system—not footnotes.
+Synthetic jobs are permanently isolated from production. They demonstrate learning-system behavior, not clinical effectiveness.
 
-## Accomplishments we are proud of
+## Challenges
 
-- A distinct body-first interaction that remains usable when language is scarce.
-- A real, explainable ML pipeline instead of a single opaque API call.
-- Crisis escalation that bypasses AI rather than asking AI to manage danger.
-- Raw check-ins that never leave transient in-browser state.
-- A reproducible local audit that proves constraint behavior without cloud infrastructure.
-- A polished design that treats calm, accessibility, and agency as functional requirements.
-- Automated tests for danger bypass, explanation coverage, breath sensitivity, local learning, empty input, and accessibility parity.
+The central engineering challenge was allowing learning without allowing learning to weaken safety. We made eligibility and ranking separate systems: the bandit can reorder only candidates that already passed every hard constraint. Tests intentionally assign enormous learned weights to excluded practices and verify that they remain impossible to select.
+
+The second challenge was honest feedback. A stopped timer, lower number, or skipped form is not proof that a practice helped. Only the explicit outcome enum updates the bandit; after-intensity remains a separate measurement.
+
+The third challenge was building a visible model lifecycle without external workflow infrastructure. PostgreSQL serves as both the durable application database and an atomic job queue, with retry, stale-job recovery, caching, and admin-gated promotion.
+
+## Accomplishments
+
+- A distinct low-language interaction that remains usable during overwhelm.
+- A real online contextual bandit rather than a chatbot wrapper or hardcoded “AI” label.
+- Hard exclusions that learned weights cannot override.
+- Immediate personal adaptation plus evaluated, versioned global challengers.
+- A live judge-facing training and evaluation pipeline.
+- Anonymous opt-in profiles, idempotent feedback, 30-day retention, and one-action deletion.
+- Accessible guided practice, crisis bypass, explicit offline fallback, and third-party audio isolation.
+- Automated frontend, backend, model, PostgreSQL CI, PWA, Axe, keyboard, reduced-motion, and mobile coverage.
 
 ## What we learned
 
-Responsible AI is most convincing when the architecture has less data to protect. Explainability also changes product behavior: once every recommendation had to show its reasons, weak heuristics became obvious and easier to fix.
+The strongest responsible-AI behavior is operational: responsibility should decide whether a model can ship. Unspool makes safety evaluation and manual promotion part of the backend lifecycle rather than relying on a disclaimer.
 
-Most importantly, we learned that a mental-health product can feel intelligent without trying to sound human. Unspool’s intelligence is in choosing less.
+We also learned that personalization does not require pretending to be human. The useful intelligence here is choosing among bounded actions, learning from explicit response, and knowing which options are forbidden.
 
 ## What is next
 
-Before clinical use, we would run participatory research with people who experience panic, shutdown, dissociation, sensory overload, and limited speech; obtain clinician review of every practice; validate accessibility with screen-reader and switch users; preregister an outcomes study; translate the practice library with cultural review; and publish the full model-card audit history.
+Before clinical deployment, Unspool needs clinician review of every practice, participatory research with people who experience panic, shutdown, dissociation, sensory overload, and limited speech, external accessibility testing, jurisdiction-specific crisis routing, privacy counsel, adversarial model review, and a preregistered prospective outcomes study.
 
 ## Built with
 
-Svelte 5, SvelteKit 2, TypeScript, C++23, CMake, cpp-httplib, OpenSSL, localStorage, custom hybrid retrieval, contextual bandit ranking, Vitest, Playwright, Axe, CTest, Docker, and OpenAI image generation for the original hero artwork.
+Svelte 5, SvelteKit 2, TypeScript, Bun 1.3.14, Django 6, Django REST Framework, Python 3.13, PostgreSQL 17, NumPy, WhiteNoise, Gunicorn, Vitest, Playwright, Axe, Docker, and OpenAI image generation for the original hero artwork.
 
 ## Tracks
 
-Tools for Mental Health; Best Use of AI/ML; Responsible AI; Best Design; Best Innovation and Creativity.
+Best Mental Health Tool; Best Use of AI/ML; Responsible AI; Best Design; Best Innovation and Creativity.

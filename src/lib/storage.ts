@@ -4,7 +4,7 @@ const OUTCOME_KEY = 'unspool:model-outcomes:v2'; const SESSION_KEY = 'unspool:se
 const LEGACY_OUTCOME_KEY = 'unspool:model-outcomes:v1'; const LEGACY_SESSION_KEY = 'unspool:sessions:v1';
 export const AUDIO_SETTINGS_KEY = 'unspool:audio-settings:v1';
 export type ExplicitOutcome = 'helped' | 'same' | 'harder';
-export interface Session { id: string; createdAt: string; interventionId: string; before: number | null; after: number | null; outcome: ExplicitOutcome | null; completed: boolean; }
+export interface Session { id: string; createdAt: string; interventionId: string; before: number | null; after: number | null; outcome: ExplicitOutcome | null; completed: boolean; modelVersion?: string; policySource?: 'adaptive-v3' | 'offline-v2'; }
 let demoOutcomes: Outcomes = {}; let demoSessions: Session[] = [];
 function isBrowser(): boolean { return typeof window !== 'undefined' && typeof localStorage !== 'undefined'; }
 export function isDemoMode(): boolean { return isBrowser() && new URLSearchParams(location.search).get('demo') === '1'; }
@@ -15,7 +15,8 @@ function normalizeOutcomes(value: unknown): Outcomes {
 }
 function normalizeSession(value: Partial<Session>): Session {
   const outcome = ['helped', 'same', 'harder'].includes(String(value.outcome)) ? value.outcome as ExplicitOutcome : null;
-  return { id: value.id ?? crypto.randomUUID(), createdAt: value.createdAt ?? new Date().toISOString(), interventionId: String(value.interventionId ?? ''), before: Number.isFinite(value.before) ? Number(value.before) : null, after: Number.isFinite(value.after) ? Number(value.after) : null, outcome, completed: value.completed === true };
+  const policySource = ['adaptive-v3', 'offline-v2'].includes(String(value.policySource)) ? value.policySource as Session['policySource'] : undefined;
+  return { id: value.id ?? crypto.randomUUID(), createdAt: value.createdAt ?? new Date().toISOString(), interventionId: String(value.interventionId ?? ''), before: Number.isFinite(value.before) ? Number(value.before) : null, after: Number.isFinite(value.after) ? Number(value.after) : null, outcome, completed: value.completed === true, ...(value.modelVersion ? { modelVersion: String(value.modelVersion) } : {}), ...(policySource ? { policySource } : {}) };
 }
 export function loadOutcomes(): Outcomes {
   if (!isBrowser()) return {}; if (isDemoMode()) return structuredClone(demoOutcomes);

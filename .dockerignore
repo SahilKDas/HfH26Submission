@@ -3,6 +3,9 @@
 build
 dist
 node_modules
+.venv
+.tmp
+.static
 backend/build
 test-results
 playwright-report

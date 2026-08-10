@@ -1,76 +1,54 @@
 # Four-minute demo script
 
-Target runtime: 3:35-3:50. Leave margin below the four-minute limit.
+## 0:00–0:30 — The missing interface
 
-## 0:00-0:25 - The problem
+Show the hero and begin a check-in.
 
-Show the hero.
+> “When someone is overwhelmed, language and executive function are often the first things to disappear. Unspool starts with body signals instead of a blank page or chatbot.”
 
-> “Most mental-health tools begin with a question: how are you feeling? But during overwhelm, language and executive function can be the first things to disappear. Unspool is built for that gap. It turns a few body signals into one safe next step.”
+## 0:30–1:15 — One constrained decision
 
-## 0:25-1:25 - The core flow
+Choose `Everything is too much`, intensity 8, 90 seconds, quiet, no breath focus, eyes open, silent, and seated. Enable optional adaptive learning and submit.
 
-Click **Find my next step**.
+> “These are not preferences added after recommendation. They are hard eligibility constraints. The online policy can learn, but it cannot restore an incompatible practice.”
 
-- Select **Everything is too much**, **Thoughts racing**, and **Chest feels tight**.
-- Choose **Less input**.
-- Set intensity to 8 and capacity to 90 seconds.
-- Enable **Skip breath-focused steps**, **Keep my eyes open**, and **I need a silent option**.
+Open **Why this step?** and show adaptive-v3, the close/clear margin, matched factors, learning component, and exclusions.
 
-> “There is no blank page, diagnosis, or chat transcript. Accessibility is not a buried setting; it constrains the model before ranking.”
+## 1:15–2:00 — Guided action and explicit learning
 
-Click **Create my step**.
+Open guided mode, demonstrate keyboard controls, then complete or stop after meaningful time. Report an after-intensity and choose **Helped**.
 
-## 1:25-2:10 - Recommendation and explainability
+> “After-intensity is a measurement, not a reward we invent. Only helped, same, or harder updates the selected arm. Harder removes that practice from this anonymous personal policy.”
 
-Open **Why this step**.
+Open Response Map and show the server-backed session and policy source.
 
-> “The recommender combines structured signal matching, compact local embeddings, hard safety constraints, and a contextual bandit. It shows the matched signals, time fit, access fit, evidence family, and whether local feedback influenced the choice.”
+## 2:00–3:10 — Put the backend on screen
 
-Start the timer. Point out the three progressive instructions and opt-out caution.
+Open How It Works, briefly show the five-stage loop, then run **Run live simulation** in the Model Room.
 
-Scroll to **Borrow these words** and copy the message.
+> “This is a real Django/PostgreSQL job. A separate worker trains a disposable challenger on 12,288 seeded synthetic interactions and evaluates 3,072 held-out constraint cases. The request thread never performs training.”
 
-> “Every plan ends with a bridge back to people. The AI does not try to become the relationship.”
+When complete, show reward comparison, coverage, unsafe selections, violations, model version, seed, and JSON download.
 
-Finish the guide, explicitly choose an after-intensity, then tap **Helped**.
+> “The run is labeled synthetic because it proves learning-system behavior, not clinical effectiveness. It cannot modify production. Real challengers need 200 new consented outcomes, zero hard-gate violations, coverage checks, and manual admin promotion.”
 
-## 2:10-2:40 - Privacy
+## 3:10–3:35 — Resilience and safety
 
-Navigate to **My pattern**.
+Show the Constraint Lab and toggle breath or time requirements. Then trigger **I may not be safe**.
 
-> “Unspool remembers explicit outcomes, not stories. It never invents an after score. No identity, diagnosis, free text, or raw check-in is stored, and the whole model can be erased here.”
+> “The deterministic-v2 layer is both an inspectable sandbox and the offline fallback. Crisis signals bypass both policies and go directly to human support.”
 
-Briefly play the bottom-left lofi radio, then pause it.
+## 3:35–4:00 — Close
 
-> “Optional ambience stays separate from the health flow. It never autoplays, and the provider receives no check-in data.”
+Return to the hero.
 
-## 2:40-3:20 - Responsible AI proof
+> “Unspool is not a therapist simulation. It is a closed-loop adaptive support engine: one safe step now, a better-fitting step next time, and a release process where safety—not confidence—decides whether a model can ship.”
 
-Navigate to **How it works** and move through the five-stage pipeline.
+## Rehearsal checklist
 
-Scroll to the audit console and click **Run local audit**.
-
-> “Safety claims should be executable. This browser just generated and evaluated 3,072 fixed synthetic scenarios with the exact production ranker. The report is reproducible and downloadable, and no audit data left this device.”
-
-Show zero unsafe selections and zero constraint violations, then download the JSON report.
-
-## 3:20-3:40 - Safety boundary and close
-
-Return to the check-in and select **I may not be safe right now**.
-
-> “Danger signals do not go through AI. Unspool steps aside and connects the person to real-time human support.”
-
-Close on the hero.
-
-> “Unspool does not ask someone to solve the whole day. It helps them find the next kind thing.”
-
-## Recording checklist
-
-- Record at 1440p or higher with browser zoom at 100%.
-- Use a clean production URL or the local C++23 server.
-- Clear local storage before the first take.
-- Keep the cursor slow and intentional.
-- Add captions; do not rely on narration alone.
-- Show the local audit model version, seed, scenario count, and downloadable report.
-- End before 3:50.
+- Start Django and the worker before recording.
+- Warm the application, but leave the Model Room simulation uncached for the live demonstration.
+- Verify the active model, feature count, and retained outcome count load.
+- Keep the browser at 100% zoom and captions enabled.
+- Demonstrate one keyboard interaction and visible focus.
+- Keep the final video under four minutes.

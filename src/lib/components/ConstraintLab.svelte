@@ -24,8 +24,8 @@
 </script>
 
 <details class="constraint-lab">
-  <summary><span><Beaker /><b>Open the Constraint Lab</b><small>A synthetic, local-only sandbox that makes the ranker show its work.</small></span><ChevronDown /></summary>
-  <div class="lab-body"><div class="lab-heading"><div><span class="eyebrow coral">Synthetic model sandbox</span><h2>Make the model show its work.</h2><p>These values are never sent, stored as a check-in, or used to update the private model.</p></div><div class="lab-version"><Cpu /><span><b>{MODEL_VERSION}</b><small>Exact production ranker</small></span></div></div>
+  <summary><span><Beaker /><b>Open the Constraint Lab</b><small>A synthetic sandbox for the deterministic offline safety policy.</small></span><ChevronDown /></summary>
+  <div class="lab-body"><div class="lab-heading"><div><span class="eyebrow coral">Offline policy sandbox</span><h2>Make the safety layer show its work.</h2><p>These values stay in memory and demonstrate the same hard exclusions that adaptive-v3 must obey before learning can rank anything.</p></div><div class="lab-version"><Cpu /><span><b>{MODEL_VERSION}</b><small>Offline fallback and safety baseline</small></span></div></div>
     <div class="lab-grid"><form class="lab-controls" onsubmit={(event) => event.preventDefault()}>
       <fieldset><legend>Signals</legend><div class="lab-chip-grid">{#each signalOptions as option}<button type="button" class:selected={signals.includes(option.id)} aria-pressed={signals.includes(option.id)} onclick={() => toggleSignal(option.id)}>{#if signals.includes(option.id)}<Check />{/if}{option.label}</button>{/each}</div></fieldset>
       <div class="lab-control-grid"><label>Need<select bind:value={need} onchange={beforeChange}>{#each needOptions as option}<option value={option.id}>{option.label}</option>{/each}</select></label><label>Time<select bind:value={capacity} onchange={beforeChange}><option value={45}>45 sec</option><option value={90}>90 sec</option><option value={180}>3 min</option></select></label></div>

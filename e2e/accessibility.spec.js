@@ -22,7 +22,7 @@ test('home, check-in, and Method surfaces have no serious Axe violations', async
   await page.getByRole('button', { name: /close check-in/i }).click();
   await navigateFromHeader(page, /how it works/i);
   await page.getByText(/open the constraint lab/i).click();
-  await expect(page.getByRole('heading', { name: /make the model show its work/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /make the safety layer show its work/i })).toBeVisible();
   await expectNoSeriousViolations(page);
 });
 
@@ -81,29 +81,46 @@ test('app shell and core check-in remain available offline after first load', as
   expect(offlineResponse.fromServiceWorker()).toBe(true);
   await context.setOffline(true);
   await expect(page.getByRole('heading', { name: /when everything is too much/i })).toBeVisible();
-  await expect(page.getByText(/check-ins and saved local insights still work/i)).toBeVisible();
+  await expect(page.getByText(/check-ins continue with the labeled deterministic-v2 policy/i)).toBeVisible();
   await page.getByRole('button', { name: /find my next step/i }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
 
-test('native server is provider-neutral and emits a hashed script policy', async ({ request }) => {
+test('Django server exposes adaptive lifecycle health and a hashed script policy', async ({ request }) => {
   const health = await request.get('/healthz');
-  expect(await health.json()).toMatchObject({ status: 'ok', runtime: 'c++23', privacyMode: 'local-first', networkAudit: 'none' });
+  expect(await health.json()).toMatchObject({ status: 'ok', runtime: 'django6-python3.13', adaptiveModel: 'unspool-adaptive-v3' });
   const shell = await request.get('/');
   expect(shell.headers()['content-security-policy']).toMatch(/script-src 'self' 'sha256-[A-Za-z0-9+/]+=*'/);
   expect(shell.headers()['content-security-policy']).not.toMatch(/script-src[^;]*unsafe-inline/);
-  expect((await request.post('/api/audit')).status()).toBe(404);
+  expect((await request.post('/api/audit')).status()).toBe(403);
+  expect((await request.get('/api/audit')).status()).toBe(404);
 });
 
-test('exact audit runs locally without any API request', async ({ page }) => {
+test('Model Room runs a live isolated backend simulation', async ({ page }) => {
+  test.setTimeout(180_000);
   const apiRequests = [];
   page.on('request', (request) => { if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url()); });
   await page.goto('/');
   await navigateFromHeader(page, /how it works/i);
-  await page.getByRole('button', { name: /run local audit/i }).click();
-  await expect(page.getByText(/all fixed safety constraints passed/i)).toBeVisible();
+  await page.getByRole('button', { name: /run live simulation/i }).click();
+  await expect(page.getByText(/challenger cleared every hard gate/i)).toBeVisible({ timeout: 120_000 });
   await expect(page.getByText('3072', { exact: true })).toBeVisible();
-  expect(apiRequests).toEqual([]);
+  expect(apiRequests.some((url) => url.includes('/api/v1/simulations'))).toBe(true);
+  // A concurrent or recent identical run may return the ten-minute cached report without polling.
+});
+
+test('explicit learning consent creates an anonymous adaptive decision', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /find my next step/i }).click();
+  await page.getByRole('button', { name: /thoughts racing/i }).click();
+  await page.getByRole('button', { name: /^continue/i }).click();
+  await page.getByRole('button', { name: 'Less input' }).click();
+  await page.getByRole('button', { name: /^continue/i }).click();
+  await page.getByRole('checkbox', { name: /let unspool learn/i }).check();
+  await page.getByRole('button', { name: /create my step/i }).click();
+  await expect(page.getByText(/adaptive policy · (close|clear) decision/i)).toHaveCount(1);
+  await page.getByRole('button', { name: /why this step/i }).click();
+  await expect(page.getByText(/unspool-adaptive-v3/i)).toBeVisible();
 });
 
 test('complete check-in, guided practice, explicit feedback, and Insights flow', async ({ page }) => {

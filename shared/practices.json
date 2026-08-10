@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "modelVersion": "unspool-ranker-v2",
+  "practices": [
+    {
+      "id": "orient-five",
+      "duration": 90,
+      "signals": ["racing", "unreal", "overstimulated"],
+      "needs": ["grounding", "clarity"],
+      "modes": ["eyes-open", "silent", "seated", "standing"],
+      "intensityRange": [4, 10],
+      "evidence": "sensory grounding",
+      "constraints": []
+    },
+    {
+      "id": "pressure-anchor",
+      "duration": 60,
+      "signals": ["unreal", "numb", "overstimulated"],
+      "needs": ["grounding", "settle"],
+      "modes": ["eyes-open", "eyes-closed", "silent", "seated"],
+      "intensityRange": [3, 10],
+      "evidence": "proprioceptive grounding",
+      "constraints": []
+    },
+    {
+      "id": "longer-out",
+      "duration": 75,
+      "signals": ["tight-chest", "racing", "restless"],
+      "needs": ["settle"],
+      "modes": ["eyes-open", "eyes-closed", "audio", "seated", "standing"],
+      "intensityRange": [2, 8],
+      "evidence": "paced breathing",
+      "constraints": ["breath-focused"]
+    },
+    {
+      "id": "micro-movement",
+      "duration": 90,
+      "signals": ["restless", "tight-chest", "overstimulated", "irritable"],
+      "needs": ["release", "settle"],
+      "modes": ["eyes-open", "silent", "seated", "standing"],
+      "intensityRange": [3, 10],
+      "evidence": "controlled motor discharge",
+      "constraints": []
+    },
+    {
+      "id": "reduce-input",
+      "duration": 45,
+      "signals": ["overstimulated", "irritable", "shutdown"],
+      "needs": ["quiet", "clarity"],
+      "modes": ["eyes-open", "silent", "seated", "standing"],
+      "intensityRange": [2, 10],
+      "evidence": "stimulus reduction",
+      "constraints": []
+    },
+    {
+      "id": "one-true-sentence",
+      "duration": 60,
+      "signals": ["racing", "sad", "shame", "shutdown"],
+      "needs": ["clarity", "connection"],
+      "modes": ["eyes-open", "silent", "seated"],
+      "intensityRange": [1, 7],
+      "evidence": "affect labeling",
+      "constraints": ["low-intensity-reflection"]
+    },
+    {
+      "id": "warm-cool",
+      "duration": 75,
+      "signals": ["numb", "unreal", "shutdown", "racing"],
+      "needs": ["grounding", "settle"],
+      "modes": ["eyes-open", "silent", "seated", "standing"],
+      "intensityRange": [3, 9],
+      "evidence": "sensory orientation",
+      "constraints": []
+    },
+    {
+      "id": "borrow-a-nervous-system",
+      "duration": 120,
+      "signals": ["sad", "tight-chest", "shame", "shutdown"],
+      "needs": ["connection", "grounding"],
+      "modes": ["eyes-open", "audio", "seated", "standing"],
+      "intensityRange": [4, 10],
+      "evidence": "social co-regulation",
+      "constraints": []
+    }
+  ]
+}
