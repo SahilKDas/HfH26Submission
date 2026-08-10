@@ -3,9 +3,14 @@ dist/
 .svelte-kit/
 build/
 backend/build/
+__pycache__/
+*.py[cod]
 .env
 .env.*
 !.env.example
+.venv/
+.tmp/
+.static/
 coverage/
 playwright-report/
 test-results/

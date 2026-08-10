@@ -19,12 +19,14 @@
   import type { CheckInInput, RankedPractice } from '$shared/ranker';
   import type { ExplicitOutcome } from '$lib/storage';
   import { addSession, recordOutcome } from '$lib/storage';
+  import { submitOutcome } from '$lib/api';
   import { audioState, playCue, setCuesEnabled, setCueVolume } from '$lib/audio';
   import { focusTrap } from '$lib/focus';
   export let practice: Practice & RankedPractice; export let input: CheckInInput;
+  export let meta: { decisionId: string | null; modelVersion: string; policySource: 'adaptive-v3' | 'offline-v2'; decisionMargin: number; decisionClarity: 'close' | 'clear'; learningEnabled: boolean };
   export let onClose: () => void; export let onAgain: () => void; export let onReject: (input: CheckInInput) => void; export let onCrisis: () => void; export let onSaved: () => void;
   let whyOpen = false; let guided = false; let running = false; let elapsed = 0; let anchor = 0; let accumulated = 0; let timer = 0;
-  let completed = false; let feedbackOpen = false; let after: number | null = null; let recorded = false; let copied = false; let cuePulse = 0;
+  let completed = false; let feedbackOpen = false; let after: number | null = null; let recorded = false; let copied = false; let cuePulse = 0; let syncState: 'idle' | 'saving' | 'server' | 'local' | 'failed' = 'idle';
   $: boundaries = practice.steps.map((_, index) => practice.steps.slice(0, index).reduce((sum, step) => sum + step.time, 0));
   $: currentStep = Math.min(practice.steps.length - 1, Math.max(0, boundaries.findLastIndex((boundary) => elapsed >= boundary)));
   $: progress = Math.min(100, elapsed / practice.duration * 100);
@@ -39,8 +41,15 @@
   async function cue(kind: 'start' | 'transition' | 'pause' | 'complete') { cuePulse += 1; await playCue(kind); }
   function complete() { clearInterval(timer); running = false; elapsed = practice.duration; accumulated = elapsed; completed = true; guided = false; feedbackOpen = true; void cue('complete'); }
   function stop() { pause(); guided = false; if (elapsed >= 15) feedbackOpen = true; else onClose(); }
-  function save(outcome: ExplicitOutcome | null) {
-    if (recorded) return; addSession({ interventionId: practice.id, before: input.intensity, after, outcome, completed }); if (outcome) recordOutcome(practice.id, outcome); recorded = true; onSaved();
+  async function save(outcome: ExplicitOutcome | null) {
+    if (recorded) return;
+    addSession({ interventionId: practice.id, before: input.intensity, after, outcome, completed, modelVersion: meta.modelVersion, policySource: meta.policySource });
+    if (outcome) recordOutcome(practice.id, outcome);
+    recorded = true; syncState = meta.decisionId && outcome ? 'saving' : 'local'; onSaved();
+    if (meta.decisionId && outcome) {
+      try { await submitOutcome(meta.decisionId, { outcome, after, completed, elapsedSeconds: Math.round(elapsed) }); syncState = 'server'; }
+      catch { syncState = 'failed'; }
+    }
   }
   async function shareBridge() { try { if (navigator.share) await navigator.share({ title: 'A small ask from Unspool', text: practice.bridge }); else { await navigator.clipboard.writeText(practice.bridge); copied = true; } } catch { /* user cancelled */ } }
   function guidedKeys(event: KeyboardEvent) {
@@ -53,13 +62,13 @@
 
 <svelte:window onkeydown={guidedKeys} />
 <div class="plan-page">
-  <header class="plan-header"><button class="brand" onclick={onClose}><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Unspool</button><span class="privacy-chip">Chosen locally · {practice.confidence}% fit</span><button class="icon-button" aria-label="Close practice" onclick={onClose}><X /></button></header>
+  <header class="plan-header"><button class="brand" onclick={onClose}><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Unspool</button><span class="privacy-chip">{meta.policySource === 'adaptive-v3' ? 'Adaptive policy' : 'Offline policy'} · {meta.decisionClarity} decision</span><button class="icon-button" aria-label="Close practice" onclick={onClose}><X /></button></header>
   <main class="plan-main" id="main-content">
     <section class="plan-intro"><span class="eyebrow coral">Your next step</span><h1>{practice.name}</h1><p>{practice.short}</p>
       <div class="plan-intro-actions"><button class="guide-button" onclick={() => guided = true}><Play size={15} /> Guide me step by step</button><button class="not-for-me" onclick={() => onReject(input)}>This step isn’t for me</button></div>
       <div class="cue-settings"><label><input type="checkbox" checked={$audioState.cuesEnabled} onchange={(event) => setCuesEnabled(event.currentTarget.checked)} /> Optional nonverbal cues</label><label class="cue-volume">Cue volume <input aria-label="Cue volume" type="range" min="0" max="1" step=".05" value={$audioState.cueVolume} oninput={(event) => setCueVolume(Number(event.currentTarget.value))} /></label></div>
       <button class="why-button" aria-expanded={whyOpen} onclick={() => whyOpen = !whyOpen}><Info size={14} /> Why this step? <ChevronRight size={14} /></button>
-      {#if whyOpen}<div class="why-panel"><div class="reason-chips">{#each practice.explanation.matchedSignals as signal}<span>{signal}</span>{/each}{#if practice.explanation.needMatched}<span>need matched</span>{/if}<span>{practice.explanation.learning}</span></div><p>{practice.why}</p><small><Info size={13} /> Literature-informed, not clinical advice or a treatment claim.</small></div>{/if}
+      {#if whyOpen}<div class="why-panel"><div class="reason-chips">{#each practice.explanation.matchedSignals as signal}<span>{signal}</span>{/each}{#if practice.explanation.needMatched}<span>need matched</span>{/if}<span>{practice.explanation.learning}</span></div><p>{practice.why}</p><p class="decision-trace"><b>{meta.modelVersion}</b> · margin {meta.decisionMargin.toFixed(2)} · hard exclusions ran before learning.</p><small><Info size={13} /> Literature-informed, not clinical advice or a treatment claim.</small></div>{/if}
     </section>
     <section class="practice-card">
       <div class="timer-column"><div class="timer-ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="45"></circle><circle class="progress" cx="50" cy="50" r="45" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></circle></svg><div><strong>{practice.duration}</strong><span>seconds</span></div></div><button class="timer-control" onclick={() => guided = true}><Play /> Start guided mode</button><button class="reset-link" onclick={restart}><RefreshCcw /> Restart</button></div>
@@ -68,7 +77,7 @@
     <section class="bridge-card"><span class="bridge-icon"><Share2 /></span><div><span class="eyebrow">A bridge to another person</span><h2>If doing this alone is too much</h2><blockquote>“{practice.bridge}”</blockquote></div><button onclick={shareBridge}>{#if copied}<Check /> Copied{:else}<Clipboard /> Share sentence{/if}</button></section>
     {#if feedbackOpen}
       <section class="feedback-card feedback-open" aria-labelledby="feedback-title">
-        {#if recorded}<div class="feedback-thanks"><span><Check /></span><div><h2 id="feedback-title">Recorded privately.</h2><p>Your explicit response—not an inferred score—updates this device only.</p><button onclick={onClose}>Return home</button></div></div>
+        {#if recorded}<div class="feedback-thanks"><span><Check /></span><div><h2 id="feedback-title">Response recorded.</h2><p>{syncState === 'saving' ? 'Updating your anonymous adaptive policy…' : syncState === 'server' ? 'Your explicit outcome updated your adaptive profile.' : syncState === 'failed' ? 'Saved on this device; the server update was unavailable.' : 'Saved on this device without becoming a training event.'}</p><button onclick={onClose}>Return home</button></div></div>
         {:else}<div class="feedback-form"><div><span class="eyebrow coral">Optional explicit feedback</span><h2 id="feedback-title">Where is the intensity now?</h2><p>Choose a number only if you want to. Unspool never invents an after score.</p></div><div class="after-scale">{#each Array(10) as _, index}<button aria-pressed={after === index + 1} onclick={() => after = index + 1}>{index + 1}</button>{/each}</div><div><h2>What happened?</h2><div class="outcome-actions"><button onclick={() => save('helped')}>Helped</button><button onclick={() => save('same')}>About the same</button><button onclick={() => save('harder')}>Made it harder</button></div></div><button class="skip-feedback" onclick={() => save(null)}>Skip feedback</button></div>{/if}
       </section>
     {/if}

@@ -17,7 +17,7 @@ Automated coverage lives in `e2e/accessibility.spec.js` and runs in desktop Chro
 - [x] Reduced-motion media query removes nonessential animation and smooth scrolling.
 - [x] Increased-contrast media query strengthens borders and dark surfaces.
 - [x] Compact layouts reflow at 760px and 390px without two-column form dependencies.
-- [x] Offline, radio, guided transitions, audit progress, and completion have text or live-region equivalents.
+- [x] Offline, radio, guided transitions, Model Room job progress, and completion have text or live-region equivalents.
 - [ ] Perform a final manual 200% and 400% browser-zoom pass before submission recording.
 
 ## Screen-reader rehearsal

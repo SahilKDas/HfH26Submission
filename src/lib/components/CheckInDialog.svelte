@@ -6,15 +6,17 @@
   import ShieldAlert from '@lucide/svelte/icons/shield-alert';
   import X from '@lucide/svelte/icons/x';
   import { signalOptions, needOptions } from '$lib/data';
+  import { learningConsentPreferred } from '$lib/api';
   import { focusTrap } from '$lib/focus';
   import type { CheckInInput } from '$shared/ranker';
   import type { AccessKey, Capacity, NeedId, Preferences, SignalId } from '$shared/model';
   export let initial: CheckInInput | null = null;
-  export let onClose: () => void; export let onComplete: (input: CheckInInput) => void; export let onCrisis: () => void;
+  export let onClose: () => void; export let onComplete: (input: CheckInInput, learningConsent: boolean) => void | Promise<void>; export let onCrisis: () => void;
   let step = 1; let signals: SignalId[] = initial?.signals ? [...initial.signals] : [];
   let need: NeedId | null = initial?.need ?? null; let intensity = initial?.intensity ?? 5; let capacity: Capacity = initial?.capacity ?? 90;
   let preferences: Preferences = initial?.preferences ? { ...initial.preferences } : { noBreath: false, eyesOpen: false, silent: false, seated: false };
   let error = ''; let processing = false;
+  let learningConsent = learningConsentPreferred();
   const accessRows: { key: AccessKey; title: string; copy: string }[] = [
     { key: 'noBreath', title: 'Skip breath-focused steps', copy: 'Exclude any practice that directs attention to breathing.' },
     { key: 'eyesOpen', title: 'Keep my eyes open', copy: 'Only show practices designed for an eyes-open state.' },
@@ -23,9 +25,11 @@
   ];
   function toggleSignal(id: SignalId) { signals = signals.includes(id) ? signals.filter((item) => item !== id) : [...signals, id]; error = ''; }
   function next() { if (step === 1 && !signals.length) { error = 'Choose at least one body signal before continuing.'; return; } if (step === 2 && !need) { error = 'Choose what would help most right now.'; return; } error = ''; step += 1; }
-  function finish() {
+  async function finish() {
     if (!need) return; const selectedNeed = need; processing = true;
-    window.setTimeout(() => onComplete({ signals, need: selectedNeed, intensity, capacity, preferences, immediateDanger: false }), 550);
+    await new Promise((resolve) => window.setTimeout(resolve, 350));
+    try { await onComplete({ signals, need: selectedNeed, intensity, capacity, preferences, immediateDanger: false }, learningConsent); }
+    catch { processing = false; error = 'The recommendation engine could not finish. Try again.'; }
   }
   function handleKey(event: KeyboardEvent) { if (event.key === 'Escape' && !processing) onClose(); }
 </script>
@@ -33,12 +37,12 @@
 <svelte:window onkeydown={handleKey} />
 <div class="modal-backdrop" role="presentation">
   <div class="checkin-modal" role="dialog" aria-modal="true" aria-labelledby="checkin-title" use:focusTrap>
-    <header class="checkin-header"><span class="privacy-chip"><LockKeyhole size={14} /> Private on this device</span><button class="icon-button" aria-label="Close check-in" onclick={onClose}><X /></button></header>
+    <header class="checkin-header"><span class="privacy-chip"><LockKeyhole size={14} /> Adaptive check-in</span><button class="icon-button" aria-label="Close check-in" onclick={onClose}><X /></button></header>
     <div class="progress-rail" aria-hidden="true"><span style={`width:${step / 3 * 100}%`}></span></div>
     <div class="checkin-content">
       <div class="step-meta"><span>0{step}</span><p>/ 03</p></div>
       {#if step === 1}
-        <div class="checkin-step"><span class="eyebrow coral">Start with sensation</span><h1 id="checkin-title" tabindex="-1">What is your body telling you?</h1><p class="step-lede">Choose every signal that fits. There is no text box and nothing leaves this device.</p>
+        <div class="checkin-step"><span class="eyebrow coral">Start with sensation</span><h1 id="checkin-title" tabindex="-1">What is your body telling you?</h1><p class="step-lede">Choose every signal that fits. There is no journal prompt and the adaptive engine accepts only these bounded choices.</p>
           <div class="signal-grid">{#each signalOptions as option}<button class="signal-option" class:selected={signals.includes(option.id)} aria-pressed={signals.includes(option.id)} onclick={() => toggleSignal(option.id)}><span class="signal-icon" aria-hidden="true">{option.label.slice(0, 1)}</span><span>{option.label}</span><i aria-hidden="true">{#if signals.includes(option.id)}<Check size={13} />{:else}<span class="plus-line"></span>{/if}</i></button>{/each}</div>
         </div>
       {:else if step === 2}
@@ -50,6 +54,7 @@
       {:else}
         <div class="checkin-step preferences-step"><span class="eyebrow coral">Access settings</span><h1 id="checkin-title" tabindex="-1">Make the step fit you.</h1><p class="step-lede">These are hard constraints. Incompatible practices are removed before scoring.</p>
           <div class="preference-list">{#each accessRows as row}<label class="preference-row"><span class="preference-icon" aria-hidden="true">{row.title.slice(0, 1)}</span><span class="preference-copy"><b>{row.title}</b><small>{row.copy}</small></span><input type="checkbox" checked={preferences[row.key]} onchange={(event) => preferences = { ...preferences, [row.key]: event.currentTarget.checked }} /><span class="toggle" aria-hidden="true"><span></span></span></label>{/each}</div>
+          <label class="learning-consent"><input type="checkbox" bind:checked={learningConsent} /><span><b>Let Unspool learn from my explicit feedback</b><small>Optional. Creates an anonymous adaptive profile and retains bounded decisions and outcomes for 30 days. No text, name, diagnosis, IP address, or user-agent is stored.</small></span></label>
           <div class="review-card"><div><Check size={17} /><span><b>{signals.length} signal{signals.length === 1 ? '' : 's'} · intensity {intensity} · {capacity} seconds</b><small>{needOptions.find((item) => item.id === need)?.label}</small></span></div><button onclick={() => step = 1}>Edit</button></div>
         </div>
       {/if}

@@ -13,14 +13,14 @@
   <section class="hero-shell">
     <div class="hero-art" aria-hidden="true"></div><div class="hero-vignette" aria-hidden="true"></div>
     <div class="hero-content">
-      <span class="pill pill-warm"><Sparkles size={14} /> One safe next step</span>
+      <span class="pill pill-warm"><Sparkles size={14} /> One step now. A better fit next time.</span>
       <h1>When everything is<br /><em>too much.</em></h1>
-      <p class="hero-lede">Unspool turns a ten-second private check-in into one small, explainable practice. No account, no diagnosis, and no pressure to tell your whole story.</p>
+      <p class="hero-lede">Unspool turns body signals into one safety-constrained practice, measures only the response you choose to report, and learns what fits you better next time.</p>
       <div class="hero-actions">
         <button class="primary-button large" onclick={onCheckIn}>Find my next step <ArrowRight size={18} /></button>
         <button class="quiet-button large" onclick={onMethod}>See how it decides</button>
       </div>
-      <div class="trust-row"><span><LockKeyhole size={14} /> Stays on this device</span><span><ShieldCheck size={14} /> Safety constraints first</span><span><WifiOff size={14} /> Core flow works offline</span></div>
+      <div class="trust-row"><span><LockKeyhole size={14} /> Body-first, not chat-first</span><span><ShieldCheck size={14} /> Safety-gated every time</span><span><WifiOff size={14} /> Adaptive online · resilient offline</span></div>
     </div>
     <aside class="hero-now-card">
       <span class="eyebrow">Need urgent support?</span><div class="now-orbit"><span>988</span><small>US & Canada</small></div>
@@ -28,9 +28,9 @@
       <button onclick={onCrisis}>Open support options <ArrowRight size={15} /></button>
     </aside>
   </section>
-  <div class="proof-strip"><span>Private by design</span><i></i><span>Eight bounded practices</span><i></i><span>Exact inspectable ranking</span></div>
+  <div class="proof-strip"><span>25-feature adaptive policy</span><i></i><span>Eight bounded practices</span><i></i><span>Explicit feedback loop</span></div>
   <section class="section-pad">
-    <div class="section-heading split-heading"><div><span class="eyebrow coral">Less advice. More traction.</span><h2>A calmer path from signal to action.</h2></div><p>Unspool does not pretend to know what you feel. You choose the signals, constraints, and available time; the model shows why one practice fits.</p></div>
+    <div class="section-heading split-heading"><div><span class="eyebrow coral">Signal. Act. Measure. Adapt.</span><h2>A calmer path that learns.</h2></div><p>You choose the signals, constraints, and available time. The policy selects one eligible practice, shows its decision trace, and updates only from explicit outcomes.</p></div>
     <div class="feature-grid">
       <article class="feature-card feature-dark"><span class="feature-number">01 / NOTICE</span><div class="signal-cloud" aria-hidden="true"><span>racing</span><span>frozen</span><span>far away</span></div><h3>Name body signals</h3><p>Choose plain-language signals without writing or uploading a journal entry.</p></article>
       <article class="feature-card feature-coral"><span class="feature-number">02 / CONSTRAIN</span><div class="constraint-rings" aria-hidden="true"></div><h3>Respect what is accessible</h3><p>Time, breath, sound, eyes-open, and seated requirements are hard exclusions—not afterthoughts.</p></article>
